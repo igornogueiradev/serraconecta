@@ -1,0 +1,351 @@
+import { useState } from "react";
+import { Header } from "@/components/Header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Users, MapPin, Clock, Luggage, Plus, Baby } from "lucide-react";
+
+interface Trip {
+  id: string;
+  passengerName: string;
+  adults: number;
+  children: number;
+  luggage: number;
+  route: string;
+  date: string;
+  time: string;
+  price: number;
+  description: string;
+  status: "pending" | "accepted" | "completed";
+}
+
+interface TripsPageProps {
+  userName: string;
+  onLogout: () => void;
+}
+
+export default function TripsPage({ userName, onLogout }: TripsPageProps) {
+  const [trips] = useState<Trip[]>([
+    {
+      id: "1",
+      passengerName: "Ana Costa",
+      adults: 2,
+      children: 1,
+      luggage: 3,
+      route: "Porto Alegre → Gramado",
+      date: "2024-01-15",
+      time: "09:00",
+      price: 90,
+      description: "Viagem para final de semana em família. Flexível com horário.",
+      status: "pending"
+    },
+    {
+      id: "2",
+      passengerName: "Roberto Lima",
+      adults: 1,
+      children: 0,
+      luggage: 1,
+      route: "Gramado → Porto Alegre",
+      date: "2024-01-15",
+      time: "17:00",
+      price: 70,
+      description: "Retorno de viagem de negócios.",
+      status: "pending"
+    },
+    {
+      id: "3",
+      passengerName: "Família Ferreira",
+      adults: 4,
+      children: 2,
+      luggage: 6,
+      route: "Porto Alegre → Gramado",
+      date: "2024-01-16",
+      time: "08:30",
+      price: 120,
+      description: "Grupo familiar grande, precisamos de veículo com boa capacidade.",
+      status: "accepted"
+    }
+  ]);
+
+  const [newTrip, setNewTrip] = useState({
+    adults: "",
+    children: "",
+    luggage: "",
+    route: "",
+    date: "",
+    time: "",
+    price: "",
+    description: ""
+  });
+
+  const handleAddTrip = () => {
+    // Aqui seria feita a chamada para a API
+    console.log("Adicionando viagem:", newTrip);
+  };
+
+  const getStatusBadge = (status: Trip["status"]) => {
+    switch (status) {
+      case "pending":
+        return <Badge variant="outline">Aguardando</Badge>;
+      case "accepted":
+        return <Badge variant="default">Aceita</Badge>;
+      case "completed":
+        return <Badge variant="secondary">Concluída</Badge>;
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header isLoggedIn={true} userName={userName} onLogout={onLogout} />
+      
+      <main className="container mx-auto px-4 py-8">
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Viagens Ofertadas
+            </h1>
+            <p className="text-muted-foreground">
+              Encontre viagens que precisam de motorista ou oferte uma nova viagem
+            </p>
+          </div>
+          
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="secondary" className="mt-4 sm:mt-0">
+                <Plus className="w-4 h-4 mr-2" />
+                Ofertar Viagem
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nova Oferta de Viagem</DialogTitle>
+                <DialogDescription>
+                  Crie uma oferta quando não encontrar motoristas disponíveis
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="adults">Adultos</Label>
+                    <Input
+                      id="adults"
+                      type="number"
+                      placeholder="2"
+                      min="1"
+                      value={newTrip.adults}
+                      onChange={(e) => setNewTrip({...newTrip, adults: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="children">Crianças</Label>
+                    <Input
+                      id="children"
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      value={newTrip.children}
+                      onChange={(e) => setNewTrip({...newTrip, children: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="luggage">Bagagens</Label>
+                    <Input
+                      id="luggage"
+                      type="number"
+                      placeholder="2"
+                      min="0"
+                      value={newTrip.luggage}
+                      onChange={(e) => setNewTrip({...newTrip, luggage: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="route">Rota</Label>
+                  <Select onValueChange={(value) => setNewTrip({...newTrip, route: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a rota" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
+                      <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={newTrip.date}
+                      onChange={(e) => setNewTrip({...newTrip, date: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="time">Horário</Label>
+                    <Input
+                      id="time"
+                      type="time"
+                      value={newTrip.time}
+                      onChange={(e) => setNewTrip({...newTrip, time: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="price">Valor Oferecido (R$)</Label>
+                  <Input
+                    id="price"
+                    type="number"
+                    placeholder="90"
+                    value={newTrip.price}
+                    onChange={(e) => setNewTrip({...newTrip, price: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="description">Observações</Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Detalhes sobre a viagem, flexibilidade de horários, pontos de encontro..."
+                    value={newTrip.description}
+                    onChange={(e) => setNewTrip({...newTrip, description: e.target.value})}
+                  />
+                </div>
+
+                <Button onClick={handleAddTrip} className="w-full" variant="secondary">
+                  Ofertar Viagem
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap gap-4 mb-8">
+          <Select defaultValue="all">
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Filtrar por rota" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as rotas</SelectItem>
+              <SelectItem value="poa-gramado">POA → Gramado</SelectItem>
+              <SelectItem value="gramado-poa">Gramado → POA</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select defaultValue="pending">
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="pending">Aguardando</SelectItem>
+              <SelectItem value="accepted">Aceitas</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Trips Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {trips.map((trip) => (
+            <Card key={trip.id} className="shadow-card hover:shadow-elegant transition-all duration-300">
+              <CardHeader className="pb-3">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-lg">{trip.passengerName}</CardTitle>
+                    <CardDescription className="text-sm">
+                      {new Date(trip.date).toLocaleDateString('pt-BR')} às {trip.time}
+                    </CardDescription>
+                  </div>
+                  {getStatusBadge(trip.status)}
+                </div>
+              </CardHeader>
+              
+              <CardContent className="space-y-3">
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <MapPin className="w-4 h-4 mr-2" />
+                  <span>{trip.route.replace("→", "→")}</span>
+                </div>
+                
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="flex items-center text-muted-foreground">
+                    <Users className="w-4 h-4 mr-1" />
+                    <span>{trip.adults}</span>
+                  </div>
+                  
+                  {trip.children > 0 && (
+                    <div className="flex items-center text-muted-foreground">
+                      <Baby className="w-4 h-4 mr-1" />
+                      <span>{trip.children}</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center text-muted-foreground">
+                    <Luggage className="w-4 h-4 mr-1" />
+                    <span>{trip.luggage}</span>
+                  </div>
+                </div>
+                
+                {trip.description && (
+                  <p className="text-sm text-muted-foreground border-t pt-3">
+                    {trip.description.length > 100 
+                      ? `${trip.description.substring(0, 100)}...` 
+                      : trip.description
+                    }
+                  </p>
+                )}
+                
+                <div className="flex justify-between items-center pt-3 border-t">
+                  <span className="text-lg font-semibold text-secondary">
+                    R$ {trip.price}
+                  </span>
+                  <Button 
+                    variant={trip.status === "pending" ? "secondary" : "outline"} 
+                    size="sm"
+                    disabled={trip.status !== "pending"}
+                  >
+                    {trip.status === "pending" ? "Aceitar" : 
+                     trip.status === "accepted" ? "Aceita" : "Concluída"}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Empty State */}
+        {trips.length === 0 && (
+          <div className="text-center py-12">
+            <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              Nenhuma viagem encontrada
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              Seja o primeiro a ofertar uma viagem!
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="secondary">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Ofertar Viagem
+                </Button>
+              </DialogTrigger>
+            </Dialog>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}
