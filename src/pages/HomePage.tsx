@@ -145,19 +145,19 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
           <Card className="bg-gradient-hero text-white shadow-elegant">
             <CardContent className="p-8">
               <h3 className="text-2xl font-bold mb-4">Como funciona?</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+              <div className="max-w-3xl mx-auto text-left space-y-6">
                 <div>
-                  <h4 className="font-semibold mb-2">Para Motoristas:</h4>
+                  <h4 className="font-semibold mb-2">Disponibilidades de Motoristas:</h4>
                   <p className="text-white/90">
-                    Cadastre sua disponibilidade informando horários, capacidade do veículo e rota. 
-                    Receba solicitações de passageiros.
+                    Cadastre sua disponibilidade informando horários, capacidade do veículo, tipo de serviço (privativo ou coletivo) e rota. 
+                    Receba solicitações de passageiros interessados.
                   </p>
                 </div>
                 <div>
-                  <h4 className="font-semibold mb-2">Para Passageiros:</h4>
+                  <h4 className="font-semibold mb-2">Ofertas de Viagem:</h4>
                   <p className="text-white/90">
-                    Quando não há motoristas disponíveis, oferte sua viagem com detalhes como 
-                    número de passageiros e bagagens.
+                    Quando há demanda excedente ou você quer garantir uma viagem específica, oferte uma viagem detalhando 
+                    número de passageiros, bagagens e tipo de serviço desejado.
                   </p>
                 </div>
               </div>

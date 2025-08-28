@@ -75,11 +75,14 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
   const [newTrip, setNewTrip] = useState({
     adults: "",
     children: "",
-    luggage: "",
+    luggage23kg: "",
+    luggage10kg: "",
+    bags: "",
     route: "",
     date: "",
     time: "",
     price: "",
+    tripType: "",
     description: ""
   });
 
@@ -130,7 +133,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="adults">Adultos</Label>
                     <Input
@@ -154,31 +157,75 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       onChange={(e) => setNewTrip({...newTrip, children: e.target.value})}
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="luggage">Bagagens</Label>
-                    <Input
-                      id="luggage"
-                      type="number"
-                      placeholder="2"
-                      min="0"
-                      value={newTrip.luggage}
-                      onChange={(e) => setNewTrip({...newTrip, luggage: e.target.value})}
-                    />
+                </div>
+
+                <div className="space-y-3">
+                  <Label className="text-sm font-medium">Bagagens</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="luggage23kg" className="text-xs">Bagagens 23kg</Label>
+                      <Input
+                        id="luggage23kg"
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        value={newTrip.luggage23kg}
+                        onChange={(e) => setNewTrip({...newTrip, luggage23kg: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="luggage10kg" className="text-xs">Bagagens 10kg</Label>
+                      <Input
+                        id="luggage10kg"
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        value={newTrip.luggage10kg}
+                        onChange={(e) => setNewTrip({...newTrip, luggage10kg: e.target.value})}
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="bags" className="text-xs">Bolsas/Mochilas</Label>
+                      <Input
+                        id="bags"
+                        type="number"
+                        placeholder="0"
+                        min="0"
+                        value={newTrip.bags}
+                        onChange={(e) => setNewTrip({...newTrip, bags: e.target.value})}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="route">Rota</Label>
-                  <Select onValueChange={(value) => setNewTrip({...newTrip, route: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a rota" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
-                      <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="route">Rota</Label>
+                    <Select onValueChange={(value) => setNewTrip({...newTrip, route: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a rota" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
+                        <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="tripType">Tipo de Viagem</Label>
+                    <Select onValueChange={(value) => setNewTrip({...newTrip, tripType: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="private">Privativo</SelectItem>
+                        <SelectItem value="shared">Coletivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">

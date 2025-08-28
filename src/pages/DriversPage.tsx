@@ -70,6 +70,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
     route: "",
     departure: "",
     price: "",
+    tripType: "",
     description: ""
   });
 
@@ -148,17 +149,32 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="route">Rota</Label>
-                  <Select onValueChange={(value) => setNewDriver({...newDriver, route: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a rota" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
-                      <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="route">Rota</Label>
+                    <Select onValueChange={(value) => setNewDriver({...newDriver, route: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a rota" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
+                        <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="tripType">Tipo de Viagem</Label>
+                    <Select onValueChange={(value) => setNewDriver({...newDriver, tripType: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="private">Privativo</SelectItem>
+                        <SelectItem value="shared">Coletivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
