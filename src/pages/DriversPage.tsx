@@ -20,6 +20,8 @@ interface Driver {
   departure: string;
   price: number;
   available: boolean;
+  tripType: string;
+  description: string;
 }
 
 interface DriversPageProps {
@@ -38,7 +40,9 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       route: "Porto Alegre → Gramado",
       departure: "14:00",
       price: 80,
-      available: true
+      available: true,
+      tripType: "Privativo",
+      description: "Veículo confortável com ar condicionado"
     },
     {
       id: "2",
@@ -49,7 +53,9 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       route: "Gramado → Porto Alegre",
       departure: "16:30",
       price: 75,
-      available: true
+      available: true,
+      tripType: "Coletivo",
+      description: ""
     },
     {
       id: "3",
@@ -57,10 +63,12 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       rating: 4.7,
       vehicle: "Hyundai HB20",
       capacity: 4,
-      route: "Porto Alegre → Gramado",
+      route: "Caxias do Sul → Gramado",
       departure: "18:00",
       price: 85,
-      available: false
+      available: false,
+      tripType: "Ambos",
+      description: "Aceito viagens privativas e coletivas"
     }
   ]);
 
@@ -123,18 +131,15 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="capacity">Capacidade</Label>
-                    <Select onValueChange={(value) => setNewDriver({...newDriver, capacity: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Passageiros" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="1">1 passageiro</SelectItem>
-                        <SelectItem value="2">2 passageiros</SelectItem>
-                        <SelectItem value="3">3 passageiros</SelectItem>
-                        <SelectItem value="4">4 passageiros</SelectItem>
-                        <SelectItem value="6">6 passageiros</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      id="capacity"
+                      type="number"
+                      placeholder="4"
+                      min="1"
+                      max="10"
+                      value={newDriver.capacity}
+                      onChange={(e) => setNewDriver({...newDriver, capacity: e.target.value})}
+                    />
                   </div>
                   
                   <div className="space-y-2">
@@ -159,6 +164,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                       <SelectContent>
                         <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
                         <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
+                        <SelectItem value="caxias-gramado">Caxias do Sul → Gramado</SelectItem>
+                        <SelectItem value="gramado-caxias">Gramado → Caxias do Sul</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -172,6 +179,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                       <SelectContent>
                         <SelectItem value="private">Privativo</SelectItem>
                         <SelectItem value="shared">Coletivo</SelectItem>
+                        <SelectItem value="both">Ambos (Privativo e Coletivo)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -215,6 +223,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
               <SelectItem value="all">Todas as rotas</SelectItem>
               <SelectItem value="poa-gramado">POA → Gramado</SelectItem>
               <SelectItem value="gramado-poa">Gramado → POA</SelectItem>
+              <SelectItem value="caxias-gramado">Caxias → Gramado</SelectItem>
+              <SelectItem value="gramado-caxias">Gramado → Caxias</SelectItem>
             </SelectContent>
           </Select>
           
@@ -268,6 +278,21 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   <Clock className="w-4 h-4 mr-2" />
                   <span>Saída: {driver.departure}</span>
                 </div>
+
+                <div className="flex items-center text-sm text-muted-foreground">
+                  <Badge variant="outline" className="text-xs">
+                    {driver.tripType}
+                  </Badge>
+                </div>
+                
+                {driver.description && (
+                  <p className="text-sm text-muted-foreground border-t pt-3">
+                    {driver.description.length > 80 
+                      ? `${driver.description.substring(0, 80)}...` 
+                      : driver.description
+                    }
+                  </p>
+                )}
                 
                 <div className="flex justify-between items-center pt-3 border-t">
                   <span className="text-lg font-semibold text-foreground">

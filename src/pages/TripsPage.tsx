@@ -15,12 +15,15 @@ interface Trip {
   passengerName: string;
   adults: number;
   children: number;
-  luggage: number;
+  luggage23kg: number;
+  luggage10kg: number;
+  bags: number;
   route: string;
   date: string;
   time: string;
   price: number;
   description: string;
+  tripType: string;
   status: "pending" | "accepted" | "completed";
 }
 
@@ -36,12 +39,15 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       passengerName: "Ana Costa",
       adults: 2,
       children: 1,
-      luggage: 3,
+      luggage23kg: 2,
+      luggage10kg: 1,
+      bags: 3,
       route: "Porto Alegre → Gramado",
       date: "2024-01-15",
       time: "09:00",
       price: 90,
       description: "Viagem para final de semana em família. Flexível com horário.",
+      tripType: "Privativo",
       status: "pending"
     },
     {
@@ -49,12 +55,15 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       passengerName: "Roberto Lima",
       adults: 1,
       children: 0,
-      luggage: 1,
+      luggage23kg: 1,
+      luggage10kg: 0,
+      bags: 1,
       route: "Gramado → Porto Alegre",
       date: "2024-01-15",
       time: "17:00",
       price: 70,
       description: "Retorno de viagem de negócios.",
+      tripType: "Coletivo",
       status: "pending"
     },
     {
@@ -62,12 +71,15 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       passengerName: "Família Ferreira",
       adults: 4,
       children: 2,
-      luggage: 6,
-      route: "Porto Alegre → Gramado",
+      luggage23kg: 4,
+      luggage10kg: 2,
+      bags: 6,
+      route: "Caxias do Sul → Gramado",
       date: "2024-01-16",
       time: "08:30",
       price: 120,
       description: "Grupo familiar grande, precisamos de veículo com boa capacidade.",
+      tripType: "Ambos",
       status: "accepted"
     }
   ]);
@@ -210,6 +222,8 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       <SelectContent>
                         <SelectItem value="poa-gramado">Porto Alegre → Gramado</SelectItem>
                         <SelectItem value="gramado-poa">Gramado → Porto Alegre</SelectItem>
+                        <SelectItem value="caxias-gramado">Caxias do Sul → Gramado</SelectItem>
+                        <SelectItem value="gramado-caxias">Gramado → Caxias do Sul</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -223,6 +237,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       <SelectContent>
                         <SelectItem value="private">Privativo</SelectItem>
                         <SelectItem value="shared">Coletivo</SelectItem>
+                        <SelectItem value="both">Ambos (Privativo e Coletivo)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -289,6 +304,8 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
               <SelectItem value="all">Todas as rotas</SelectItem>
               <SelectItem value="poa-gramado">POA → Gramado</SelectItem>
               <SelectItem value="gramado-poa">Gramado → POA</SelectItem>
+              <SelectItem value="caxias-gramado">Caxias → Gramado</SelectItem>
+              <SelectItem value="gramado-caxias">Gramado → Caxias</SelectItem>
             </SelectContent>
           </Select>
           
@@ -326,22 +343,35 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                   <span>{trip.route.replace("→", "→")}</span>
                 </div>
                 
-                <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
+                  <Badge variant="outline" className="text-xs">
+                    {trip.tripType}
+                  </Badge>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
                   <div className="flex items-center text-muted-foreground">
                     <Users className="w-4 h-4 mr-1" />
-                    <span>{trip.adults}</span>
+                    <span>{trip.adults} adultos</span>
                   </div>
                   
                   {trip.children > 0 && (
                     <div className="flex items-center text-muted-foreground">
                       <Baby className="w-4 h-4 mr-1" />
-                      <span>{trip.children}</span>
+                      <span>{trip.children} crianças</span>
                     </div>
                   )}
-                  
+                </div>
+
+                <div className="space-y-2 text-sm">
                   <div className="flex items-center text-muted-foreground">
-                    <Luggage className="w-4 h-4 mr-1" />
-                    <span>{trip.luggage}</span>
+                    <Luggage className="w-4 h-4 mr-2" />
+                    <span>Bagagens:</span>
+                  </div>
+                  <div className="ml-6 space-y-1 text-xs text-muted-foreground">
+                    {trip.luggage23kg > 0 && <div>• {trip.luggage23kg} bagagem(ns) 23kg</div>}
+                    {trip.luggage10kg > 0 && <div>• {trip.luggage10kg} bagagem(ns) 10kg</div>}
+                    {trip.bags > 0 && <div>• {trip.bags} bolsa(s)/mochila(s)</div>}
                   </div>
                 </div>
                 
