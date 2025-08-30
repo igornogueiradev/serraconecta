@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Car, Users, MapPin, Clock, Star, Plus } from "lucide-react";
+import { Car, Users, MapPin, Clock, Star, Plus, Calendar, Filter } from "lucide-react";
+import { generateWhatsAppLink } from "@/utils/whatsapp";
 
 interface Driver {
   id: string;
@@ -17,11 +18,13 @@ interface Driver {
   vehicle: string;
   capacity: number;
   route: string;
+  date: string;
   departure: string;
-  price: number;
   available: boolean;
   tripType: string;
   description: string;
+  phoneNumber: string;
+  createdBy?: string;
 }
 
 interface DriversPageProps {
@@ -38,11 +41,13 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       vehicle: "Toyota Corolla",
       capacity: 4,
       route: "Porto Alegre → Gramado",
+      date: "2024-12-31",
       departure: "14:00",
-      price: 80,
       available: true,
       tripType: "Privativo",
-      description: "Veículo confortável com ar condicionado"
+      description: "Veículo confortável com ar condicionado",
+      phoneNumber: "51999887766",
+      createdBy: "joao@email.com"
     },
     {
       id: "2",
@@ -51,11 +56,13 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       vehicle: "Honda City",
       capacity: 4,
       route: "Gramado → Porto Alegre",
+      date: "2024-12-31",
       departure: "16:30",
-      price: 75,
       available: true,
       tripType: "Coletivo",
-      description: ""
+      description: "",
+      phoneNumber: "51988776655",
+      createdBy: "maria@email.com"
     },
     {
       id: "3",
@@ -64,20 +71,24 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       vehicle: "Hyundai HB20",
       capacity: 4,
       route: "Caxias do Sul → Gramado",
+      date: "2025-01-02",
       departure: "18:00",
-      price: 85,
       available: false,
-      tripType: "Ambos",
-      description: "Aceito viagens privativas e coletivas"
+      tripType: "Ambos (Privativo e Coletivo)",
+      description: "Aceito viagens privativas e coletivas",
+      phoneNumber: "51977665544",
+      createdBy: "carlos@email.com"
     }
   ]);
+
+  const [dateFilter, setDateFilter] = useState("");
 
   const [newDriver, setNewDriver] = useState({
     vehicle: "",
     capacity: "",
     route: "",
+    date: "",
     departure: "",
-    price: "",
     tripType: "",
     description: ""
   });
@@ -128,30 +139,17 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacidade</Label>
-                    <Input
-                      id="capacity"
-                      type="number"
-                      placeholder="4"
-                      min="1"
-                      max="10"
-                      value={newDriver.capacity}
-                      onChange={(e) => setNewDriver({...newDriver, capacity: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Preço (R$)</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      placeholder="80"
-                      value={newDriver.price}
-                      onChange={(e) => setNewDriver({...newDriver, price: e.target.value})}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="capacity">Capacidade de Passageiros</Label>
+                  <Input
+                    id="capacity"
+                    type="number"
+                    placeholder="4"
+                    min="1"
+                    max="50"
+                    value={newDriver.capacity}
+                    onChange={(e) => setNewDriver({...newDriver, capacity: e.target.value})}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -185,14 +183,26 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="departure">Horário de Saída</Label>
-                  <Input
-                    id="departure"
-                    type="time"
-                    value={newDriver.departure}
-                    onChange={(e) => setNewDriver({...newDriver, departure: e.target.value})}
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Data</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={newDriver.date}
+                      onChange={(e) => setNewDriver({...newDriver, date: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="departure">Horário de Saída</Label>
+                    <Input
+                      id="departure"
+                      type="time"
+                      value={newDriver.departure}
+                      onChange={(e) => setNewDriver({...newDriver, departure: e.target.value})}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -237,6 +247,16 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
               <SelectItem value="all">Todos</SelectItem>
             </SelectContent>
           </Select>
+          
+          <div className="space-y-2">
+            <Input
+              type="date"
+              placeholder="Filtrar por data"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-48"
+            />
+          </div>
         </div>
 
         {/* Drivers Grid */}
@@ -275,11 +295,16 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                 </div>
                 
                 <div className="flex items-center text-sm text-muted-foreground">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  <span>{new Date(driver.date).toLocaleDateString('pt-BR')}</span>
+                </div>
+                
+                <div className="flex items-center text-sm text-muted-foreground">
                   <Clock className="w-4 h-4 mr-2" />
                   <span>Saída: {driver.departure}</span>
                 </div>
 
-                <div className="flex items-center text-sm text-muted-foreground">
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
                   <Badge variant="outline" className="text-xs">
                     {driver.tripType}
                   </Badge>
@@ -294,14 +319,28 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   </p>
                 )}
                 
-                <div className="flex justify-between items-center pt-3 border-t">
-                  <span className="text-lg font-semibold text-foreground">
-                    R$ {driver.price}
-                  </span>
+                <div className="flex justify-center pt-3 border-t">
                   <Button 
                     variant={driver.available ? "primary" : "outline"} 
                     size="sm"
                     disabled={!driver.available}
+                    onClick={() => {
+                      if (driver.available) {
+                        const whatsappLink = generateWhatsAppLink(
+                          driver.phoneNumber,
+                          'driver',
+                          {
+                            name: driver.name,
+                            route: driver.route,
+                            date: driver.date,
+                            time: driver.departure,
+                            vehicle: driver.vehicle,
+                            capacity: driver.capacity
+                          }
+                        );
+                        window.open(whatsappLink, '_blank');
+                      }
+                    }}
                   >
                     {driver.available ? "Contactar" : "Indisponível"}
                   </Button>

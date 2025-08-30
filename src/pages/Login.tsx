@@ -15,6 +15,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = (e: React.FormEvent) => {
@@ -102,6 +103,17 @@ export default function Login({ onLogin }: LoginProps) {
                       placeholder="seu@email.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Telefone (WhatsApp)</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="(51) 99999-9999"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
                       required
                     />
                   </div>

@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, MapPin, Clock, Luggage, Plus, Baby } from "lucide-react";
+import { Users, MapPin, Clock, Luggage, Plus, Baby, Calendar } from "lucide-react";
+import { generateWhatsAppLink } from "@/utils/whatsapp";
 
 interface Trip {
   id: string;
@@ -21,10 +22,11 @@ interface Trip {
   route: string;
   date: string;
   time: string;
-  price: number;
   description: string;
   tripType: string;
   status: "pending" | "accepted" | "completed";
+  phoneNumber: string;
+  createdBy?: string;
 }
 
 interface TripsPageProps {
@@ -43,12 +45,13 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       luggage10kg: 1,
       bags: 3,
       route: "Porto Alegre → Gramado",
-      date: "2024-01-15",
+      date: "2024-12-31",
       time: "09:00",
-      price: 90,
       description: "Viagem para final de semana em família. Flexível com horário.",
       tripType: "Privativo",
-      status: "pending"
+      status: "pending",
+      phoneNumber: "51988998877",
+      createdBy: "ana@email.com"
     },
     {
       id: "2",
@@ -59,12 +62,13 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       luggage10kg: 0,
       bags: 1,
       route: "Gramado → Porto Alegre",
-      date: "2024-01-15",
+      date: "2024-12-31",
       time: "17:00",
-      price: 70,
       description: "Retorno de viagem de negócios.",
       tripType: "Coletivo",
-      status: "pending"
+      status: "pending",
+      phoneNumber: "51977887766",
+      createdBy: "roberto@email.com"
     },
     {
       id: "3",
@@ -75,14 +79,17 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       luggage10kg: 2,
       bags: 6,
       route: "Caxias do Sul → Gramado",
-      date: "2024-01-16",
+      date: "2025-01-02",
       time: "08:30",
-      price: 120,
       description: "Grupo familiar grande, precisamos de veículo com boa capacidade.",
-      tripType: "Ambos",
-      status: "accepted"
+      tripType: "Ambos (Privativo e Coletivo)",
+      status: "accepted",
+      phoneNumber: "51966776655",
+      createdBy: "ferreira@email.com"
     }
   ]);
+
+  const [dateFilter, setDateFilter] = useState("");
 
   const [newTrip, setNewTrip] = useState({
     adults: "",
@@ -93,7 +100,6 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
     route: "",
     date: "",
     time: "",
-    price: "",
     tripType: "",
     description: ""
   });
@@ -153,6 +159,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       type="number"
                       placeholder="2"
                       min="1"
+                      max="50"
                       value={newTrip.adults}
                       onChange={(e) => setNewTrip({...newTrip, adults: e.target.value})}
                     />
@@ -265,16 +272,6 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="price">Valor Oferecido (R$)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    placeholder="90"
-                    value={newTrip.price}
-                    onChange={(e) => setNewTrip({...newTrip, price: e.target.value})}
-                  />
-                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="description">Observações</Label>
@@ -319,6 +316,16 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
               <SelectItem value="all">Todas</SelectItem>
             </SelectContent>
           </Select>
+          
+          <div className="space-y-2">
+            <Input
+              type="date"
+              placeholder="Filtrar por data"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-48"
+            />
+          </div>
         </div>
 
         {/* Trips Grid */}
@@ -384,14 +391,28 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                   </p>
                 )}
                 
-                <div className="flex justify-between items-center pt-3 border-t">
-                  <span className="text-lg font-semibold text-secondary">
-                    R$ {trip.price}
-                  </span>
+                <div className="flex justify-center pt-3 border-t">
                   <Button 
                     variant={trip.status === "pending" ? "secondary" : "outline"} 
                     size="sm"
                     disabled={trip.status !== "pending"}
+                    onClick={() => {
+                      if (trip.status === "pending") {
+                        const whatsappLink = generateWhatsAppLink(
+                          trip.phoneNumber,
+                          'trip',
+                          {
+                            name: trip.passengerName,
+                            route: trip.route,
+                            date: trip.date,
+                            time: trip.time,
+                            adults: trip.adults,
+                            children: trip.children
+                          }
+                        );
+                        window.open(whatsappLink, '_blank');
+                      }
+                    }}
                   >
                     {trip.status === "pending" ? "Aceitar" : 
                      trip.status === "accepted" ? "Aceita" : "Concluída"}
