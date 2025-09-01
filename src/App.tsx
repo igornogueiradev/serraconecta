@@ -35,11 +35,11 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full">
-            {isLoggedIn && <AppSidebar />}
-            <main className="flex-1">
-              <BrowserRouter>
+        <BrowserRouter>
+          <SidebarProvider>
+            <div className="flex min-h-screen w-full">
+              {isLoggedIn && <AppSidebar />}
+              <main className="flex-1">
                 <Routes>
                   <Route 
                     path="/login" 
@@ -90,10 +90,10 @@ const App = () => {
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </BrowserRouter>
-            </main>
-          </div>
-        </SidebarProvider>
+              </main>
+            </div>
+          </SidebarProvider>
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );
