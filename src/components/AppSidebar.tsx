@@ -49,7 +49,7 @@ export function AppSidebar() {
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={getNavCls}>
+                    <NavLink to={item.url} end className={({ isActive }) => getNavCls({ isActive })}>
                       <item.icon className="mr-2 h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -67,7 +67,7 @@ export function AppSidebar() {
               {userItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} className={getNavCls}>
+                    <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
                       <item.icon className="mr-2 h-4 w-4" />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
