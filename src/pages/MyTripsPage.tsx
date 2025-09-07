@@ -1,9 +1,15 @@
 import { useState } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { Users, MapPin, Luggage, Edit, Trash2, Baby } from "lucide-react";
+import { isExpired } from "@/utils/timeUtils";
 
 interface Trip {
   id: string;
@@ -49,6 +55,9 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
     }
   ]);
 
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+
   const handleDelete = (id: string) => {
     setMyTrips(myTrips.filter(trip => trip.id !== id));
   };
@@ -59,7 +68,32 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
     ));
   };
 
-  const getStatusBadge = (status: Trip["status"]) => {
+  const handleEdit = (trip: Trip) => {
+    setEditingTrip(trip);
+    setShowEditDialog(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingTrip) {
+      setMyTrips(myTrips.map(trip => 
+        trip.id === editingTrip.id ? editingTrip : trip
+      ));
+      setShowEditDialog(false);
+      setEditingTrip(null);
+    }
+  };
+
+  const updateEditingTrip = (field: keyof Trip, value: any) => {
+    if (editingTrip) {
+      setEditingTrip({ ...editingTrip, [field]: value });
+    }
+  };
+
+  const getStatusBadge = (status: Trip["status"], expired: boolean = false) => {
+    if (expired) {
+      return <Badge variant="destructive">Expirado</Badge>;
+    }
+    
     switch (status) {
       case "pending":
         return <Badge variant="outline">Aguardando</Badge>;
@@ -85,97 +119,105 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myTrips.map((trip) => (
-            <Card key={trip.id} className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{trip.passengerName}</CardTitle>
-                    <CardDescription className="text-sm">
-                      {new Date(trip.date).toLocaleDateString('pt-BR')} às {trip.time}
-                    </CardDescription>
+          {myTrips.map((trip) => {
+            const expired = isExpired(trip.date, trip.time);
+            const canEdit = !expired && trip.status === "pending";
+            
+            return (
+              <Card key={trip.id} className={`shadow-card hover:shadow-elegant transition-all duration-300 ${expired ? 'opacity-60' : ''}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{trip.passengerName}</CardTitle>
+                      <CardDescription className="text-sm">
+                        {new Date(trip.date).toLocaleDateString('pt-BR')} às {trip.time}
+                      </CardDescription>
+                    </div>
+                    {getStatusBadge(trip.status, expired)}
                   </div>
-                  {getStatusBadge(trip.status)}
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-3">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  <span>{trip.route}</span>
-                </div>
+                </CardHeader>
                 
-                <div className="flex items-center text-sm text-muted-foreground mb-2">
-                  <Badge variant="outline" className="text-xs">
-                    {trip.tripType}
-                  </Badge>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div className="flex items-center text-muted-foreground">
-                    <Users className="w-4 h-4 mr-1" />
-                    <span>{trip.adults} adultos</span>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <span>{trip.route}</span>
                   </div>
                   
-                  {trip.children > 0 && (
+                  <div className="flex items-center text-sm text-muted-foreground mb-2">
+                    <Badge variant="outline" className="text-xs">
+                      {trip.tripType}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center text-muted-foreground">
-                      <Baby className="w-4 h-4 mr-1" />
-                      <span>{trip.children} crianças</span>
+                      <Users className="w-4 h-4 mr-1" />
+                      <span>{trip.adults} adultos</span>
                     </div>
-                  )}
-                </div>
+                    
+                    {trip.children > 0 && (
+                      <div className="flex items-center text-muted-foreground">
+                        <Baby className="w-4 h-4 mr-1" />
+                        <span>{trip.children} crianças</span>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center text-muted-foreground">
-                    <Luggage className="w-4 h-4 mr-2" />
-                    <span>Bagagens:</span>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center text-muted-foreground">
+                      <Luggage className="w-4 h-4 mr-2" />
+                      <span>Bagagens:</span>
+                    </div>
+                    <div className="ml-6 space-y-1 text-xs text-muted-foreground">
+                      {trip.luggage23kg > 0 && <div>• {trip.luggage23kg} bagagem(ns) 23kg</div>}
+                      {trip.luggage10kg > 0 && <div>• {trip.luggage10kg} bagagem(ns) 10kg</div>}
+                      {trip.bags > 0 && <div>• {trip.bags} bolsa(s)/mochila(s)</div>}
+                    </div>
                   </div>
-                  <div className="ml-6 space-y-1 text-xs text-muted-foreground">
-                    {trip.luggage23kg > 0 && <div>• {trip.luggage23kg} bagagem(ns) 23kg</div>}
-                    {trip.luggage10kg > 0 && <div>• {trip.luggage10kg} bagagem(ns) 10kg</div>}
-                    {trip.bags > 0 && <div>• {trip.bags} bolsa(s)/mochila(s)</div>}
-                  </div>
-                </div>
-                
-                {trip.description && (
-                  <p className="text-sm text-muted-foreground border-t pt-3">
-                    {trip.description.length > 100 
-                      ? `${trip.description.substring(0, 100)}...` 
-                      : trip.description
-                    }
-                  </p>
-                )}
-                
-                <div className="flex gap-2 pt-3 border-t">
-                  {trip.status === "pending" && (
+                  
+                  {trip.description && (
+                    <p className="text-sm text-muted-foreground border-t pt-3">
+                      {trip.description.length > 100 
+                        ? `${trip.description.substring(0, 100)}...` 
+                        : trip.description
+                      }
+                    </p>
+                  )}
+                  
+                  <div className="flex gap-2 pt-3 border-t">
+                    {trip.status === "pending" && !expired && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => updateStatus(trip.id, "completed")}
+                      >
+                        Marcar Concluída
+                      </Button>
+                    )}
+                    
+                    {canEdit && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEdit(trip)}
+                      >
+                        <Edit className="w-4 h-4 mr-1" />
+                        Editar
+                      </Button>
+                    )}
+                    
                     <Button 
                       variant="outline" 
                       size="sm"
-                      onClick={() => updateStatus(trip.id, "completed")}
+                      onClick={() => handleDelete(trip.id)}
                     >
-                      Marcar Concluída
+                      <Trash2 className="w-4 h-4" />
                     </Button>
-                  )}
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    Editar
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleDelete(trip.id)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {myTrips.length === 0 && (
@@ -193,6 +235,32 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
           </div>
         )}
       </main>
+
+      {/* Edit Dialog - Similar structure to MyDriversPage */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Viagem</DialogTitle>
+            <DialogDescription>
+              Atualize as informações da sua viagem
+            </DialogDescription>
+          </DialogHeader>
+          
+          {editingTrip && (
+            <div className="space-y-4">
+              {/* Edit form fields similar to the creation form */}
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => setShowEditDialog(false)} className="flex-1">
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveEdit} className="flex-1">
+                  Salvar Alterações
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

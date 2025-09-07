@@ -8,8 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Car, Users, MapPin, Clock, Star, Plus, Calendar, Filter } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Car, Users, MapPin, Clock, Star, Plus, Calendar, Filter, Truck, Package } from "lucide-react";
 import { generateWhatsAppLink } from "@/utils/whatsapp";
+import { isExpired } from "@/utils/timeUtils";
+import { RatingModal } from "@/components/RatingModal";
+import { Rating, calculateAverageRating } from "@/utils/rating";
 
 interface Driver {
   id: string;
@@ -24,6 +28,8 @@ interface Driver {
   tripType: string;
   description: string;
   phoneNumber: string;
+  hasTrailer: boolean;
+  hasRooftopCarrier: boolean;
   createdBy?: string;
 }
 
@@ -47,6 +53,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       tripType: "Privativo",
       description: "Veículo confortável com ar condicionado",
       phoneNumber: "51999887766",
+      hasTrailer: false,
+      hasRooftopCarrier: true,
       createdBy: "joao@email.com"
     },
     {
@@ -62,6 +70,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       tripType: "Coletivo",
       description: "",
       phoneNumber: "51988776655",
+      hasTrailer: false,
+      hasRooftopCarrier: false,
       createdBy: "maria@email.com"
     },
     {
@@ -77,11 +87,21 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
       tripType: "Ambos (Privativo e Coletivo)",
       description: "Aceito viagens privativas e coletivas",
       phoneNumber: "51977665544",
+      hasTrailer: true,
+      hasRooftopCarrier: false,
       createdBy: "carlos@email.com"
     }
   ]);
 
   const [dateFilter, setDateFilter] = useState("");
+  const [routeFilter, setRouteFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("available");
+  const [filtersApplied, setFiltersApplied] = useState(false);
+  
+  // Rating system states
+  const [ratings, setRatings] = useState<Rating[]>([]);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
 
   const [newDriver, setNewDriver] = useState({
     vehicle: "",
@@ -90,12 +110,75 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
     date: "",
     departure: "",
     tripType: "",
-    description: ""
+    description: "",
+    hasTrailer: false,
+    hasRooftopCarrier: false
   });
 
   const handleAddDriver = () => {
     // Aqui seria feita a chamada para a API
     console.log("Adicionando disponibilidade:", newDriver);
+  };
+
+  const applyFilters = () => {
+    setFiltersApplied(true);
+    // Aqui implementaria a lógica de filtro
+  };
+
+  const clearFilters = () => {
+    setDateFilter("");
+    setRouteFilter("all");
+    setStatusFilter("available");
+    setFiltersApplied(false);
+  };
+
+  const filteredDrivers = drivers.filter(driver => {
+    if (!filtersApplied) return true;
+    
+    let matches = true;
+    
+    if (routeFilter !== "all") {
+      matches = matches && driver.route.toLowerCase().includes(routeFilter.replace("-", " "));
+    }
+    
+    if (statusFilter === "available") {
+      matches = matches && driver.available && !isExpired(driver.date, driver.departure);
+    }
+    
+    if (dateFilter) {
+      matches = matches && driver.date === dateFilter;
+    }
+    
+    return matches;
+  });
+
+  const handleContactDriver = (driver: Driver) => {
+    const whatsappLink = generateWhatsAppLink(
+      driver.phoneNumber,
+      'driver',
+      {
+        name: driver.name,
+        route: driver.route,
+        date: driver.date,
+        time: driver.departure,
+        vehicle: driver.vehicle,
+        capacity: driver.capacity
+      }
+    );
+    window.open(whatsappLink, '_blank');
+    
+    // Open rating modal after contact
+    setSelectedDriver(driver);
+    setShowRatingModal(true);
+  };
+
+  const handleSubmitRating = (rating: Omit<Rating, 'id' | 'createdAt'>) => {
+    const newRating: Rating = {
+      ...rating,
+      id: Date.now().toString(),
+      createdAt: new Date().toISOString()
+    };
+    setRatings([...ratings, newRating]);
   };
 
   return (
@@ -125,7 +208,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
               <DialogHeader>
                 <DialogTitle>Nova Disponibilidade</DialogTitle>
                 <DialogDescription>
-                  Cadastre sua disponibilidade para transport
+                  Cadastre sua disponibilidade para transporte
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
@@ -205,6 +288,37 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   </div>
                 </div>
 
+                <div className="space-y-3">
+                  <Label>Equipamentos Adicionais</Label>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="hasTrailer"
+                        checked={newDriver.hasTrailer}
+                        onCheckedChange={(checked) => 
+                          setNewDriver({...newDriver, hasTrailer: checked as boolean})
+                        }
+                      />
+                      <Label htmlFor="hasTrailer" className="text-sm">
+                        Possui Reboque?
+                      </Label>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="hasRooftopCarrier"
+                        checked={newDriver.hasRooftopCarrier}
+                        onCheckedChange={(checked) => 
+                          setNewDriver({...newDriver, hasRooftopCarrier: checked as boolean})
+                        }
+                      />
+                      <Label htmlFor="hasRooftopCarrier" className="text-sm">
+                        Possui Bagageiro?
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-2">
                   <Label htmlFor="description">Observações (opcional)</Label>
                   <Textarea
@@ -224,8 +338,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4 mb-8">
-          <Select defaultValue="all">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <Select value={routeFilter} onValueChange={setRouteFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Filtrar por rota" />
             </SelectTrigger>
@@ -238,7 +352,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
             </SelectContent>
           </Select>
           
-          <Select defaultValue="available">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-48">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -248,129 +362,169 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
             </SelectContent>
           </Select>
           
-          <div className="space-y-2">
-            <Input
-              type="date"
-              placeholder="Filtrar por data"
-              value={dateFilter}
-              onChange={(e) => setDateFilter(e.target.value)}
-              className="w-48"
-            />
-          </div>
+          <Input
+            type="date"
+            placeholder="Filtrar por data"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className="w-48"
+          />
+        </div>
+
+        <div className="flex gap-2 mb-8">
+          <Button onClick={applyFilters} variant="primary">
+            <Filter className="w-4 h-4 mr-2" />
+            Aplicar Filtros
+          </Button>
+          
+          {filtersApplied && (
+            <Button onClick={clearFilters} variant="outline">
+              Limpar Filtros
+            </Button>
+          )}
         </div>
 
         {/* Drivers Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {drivers.map((driver) => (
-            <Card key={driver.id} className="shadow-card hover:shadow-elegant transition-all duration-300">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-lg">{driver.name}</CardTitle>
-                    <CardDescription className="flex items-center mt-1">
-                      <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                      {driver.rating}
-                    </CardDescription>
+          {filteredDrivers.map((driver) => {
+            const expired = isExpired(driver.date, driver.departure);
+            const userRatings = ratings.filter(r => r.ratedUserId === driver.id);
+            const avgRating = userRatings.length > 0 ? calculateAverageRating(userRatings) : driver.rating;
+            
+            return (
+              <Card key={driver.id} className={`shadow-card hover:shadow-elegant transition-all duration-300 ${expired ? 'opacity-60' : ''}`}>
+                <CardHeader className="pb-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-lg">{driver.name}</CardTitle>
+                      <CardDescription className="flex items-center mt-1">
+                        <Star className="w-4 h-4 text-yellow-500 mr-1" />
+                        {avgRating} {userRatings.length > 0 && `(${userRatings.length})`}
+                      </CardDescription>
+                    </div>
+                    <Badge variant={expired ? "destructive" : driver.available ? "default" : "secondary"}>
+                      {expired ? "Expirado" : driver.available ? "Disponível" : "Ocupado"}
+                    </Badge>
                   </div>
-                  <Badge variant={driver.available ? "default" : "secondary"}>
-                    {driver.available ? "Disponível" : "Ocupado"}
-                  </Badge>
-                </div>
-              </CardHeader>
-              
-              <CardContent className="space-y-3">
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Car className="w-4 h-4 mr-2" />
-                  <span>{driver.vehicle}</span>
-                </div>
+                </CardHeader>
                 
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Users className="w-4 h-4 mr-2" />
-                  <span>Até {driver.capacity} passageiros</span>
-                </div>
-                
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  <span>{driver.route}</span>
-                </div>
-                
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  <span>{new Date(driver.date).toLocaleDateString('pt-BR')}</span>
-                </div>
-                
-                <div className="flex items-center text-sm text-muted-foreground">
-                  <Clock className="w-4 h-4 mr-2" />
-                  <span>Saída: {driver.departure}</span>
-                </div>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Car className="w-4 h-4 mr-2" />
+                    <span>{driver.vehicle}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Users className="w-4 h-4 mr-2" />
+                    <span>Até {driver.capacity} passageiros</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    <span>{driver.route}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    <span>{new Date(driver.date).toLocaleDateString('pt-BR')}</span>
+                  </div>
+                  
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <Clock className="w-4 h-4 mr-2" />
+                    <span>Saída: {driver.departure}</span>
+                  </div>
 
-                <div className="flex items-center text-sm text-muted-foreground mb-2">
-                  <Badge variant="outline" className="text-xs">
-                    {driver.tripType}
-                  </Badge>
-                </div>
-                
-                {driver.description && (
-                  <p className="text-sm text-muted-foreground border-t pt-3">
-                    {driver.description.length > 80 
-                      ? `${driver.description.substring(0, 80)}...` 
-                      : driver.description
-                    }
-                  </p>
-                )}
-                
-                <div className="flex justify-center pt-3 border-t">
-                  <Button 
-                    variant={driver.available ? "primary" : "outline"} 
-                    size="sm"
-                    disabled={!driver.available}
-                    onClick={() => {
-                      if (driver.available) {
-                        const whatsappLink = generateWhatsAppLink(
-                          driver.phoneNumber,
-                          'driver',
-                          {
-                            name: driver.name,
-                            route: driver.route,
-                            date: driver.date,
-                            time: driver.departure,
-                            vehicle: driver.vehicle,
-                            capacity: driver.capacity
-                          }
-                        );
-                        window.open(whatsappLink, '_blank');
+                  <div className="flex items-center text-sm text-muted-foreground mb-2">
+                    <Badge variant="outline" className="text-xs">
+                      {driver.tripType}
+                    </Badge>
+                  </div>
+
+                  {(driver.hasTrailer || driver.hasRooftopCarrier) && (
+                    <div className="flex gap-2">
+                      {driver.hasTrailer && (
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Truck className="w-3 h-3 mr-1" />
+                          <span>Reboque</span>
+                        </div>
+                      )}
+                      {driver.hasRooftopCarrier && (
+                        <div className="flex items-center text-xs text-muted-foreground">
+                          <Package className="w-3 h-3 mr-1" />
+                          <span>Bagageiro</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {driver.description && (
+                    <p className="text-sm text-muted-foreground border-t pt-3">
+                      {driver.description.length > 80 
+                        ? `${driver.description.substring(0, 80)}...` 
+                        : driver.description
                       }
-                    }}
-                  >
-                    {driver.available ? "Contactar" : "Indisponível"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                    </p>
+                  )}
+                  
+                  <div className="flex justify-center pt-3 border-t">
+                    <Button 
+                      variant={driver.available && !expired ? "primary" : "outline"} 
+                      size="sm"
+                      disabled={!driver.available || expired}
+                      onClick={() => handleContactDriver(driver)}
+                    >
+                      {expired ? "Expirado" : driver.available ? "Contactar" : "Indisponível"}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Empty State */}
-        {drivers.length === 0 && (
+        {filteredDrivers.length === 0 && (
           <div className="text-center py-12">
             <Car className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
-              Nenhum motorista encontrado
+              {filtersApplied ? "Nenhum motorista encontrado com os filtros aplicados" : "Nenhum motorista encontrado"}
             </h3>
             <p className="text-muted-foreground mb-4">
-              Seja o primeiro a oferecer sua disponibilidade!
+              {filtersApplied ? "Tente ajustar os filtros ou limpar para ver mais opções" : "Seja o primeiro a oferecer sua disponibilidade!"}
             </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="primary">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar Disponibilidade
-                </Button>
-              </DialogTrigger>
-            </Dialog>
+            {filtersApplied ? (
+              <Button onClick={clearFilters} variant="outline">
+                Limpar Filtros
+              </Button>
+            ) : (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="primary">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar Disponibilidade
+                  </Button>
+                </DialogTrigger>
+              </Dialog>
+            )}
           </div>
         )}
       </main>
+
+      {/* Rating Modal */}
+      {selectedDriver && (
+        <RatingModal
+          isOpen={showRatingModal}
+          onClose={() => {
+            setShowRatingModal(false);
+            setSelectedDriver(null);
+          }}
+          onSubmitRating={handleSubmitRating}
+          ratedUserId={selectedDriver.id}
+          raterUserId="current-user" // This would come from auth context
+          tripId={`contact-${Date.now()}`} // Generate trip ID when contact is made
+          ratedUserName={selectedDriver.name}
+        />
+      )}
     </div>
   );
 }

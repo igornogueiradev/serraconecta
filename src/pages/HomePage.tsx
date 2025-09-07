@@ -149,8 +149,7 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
                 <div>
                   <h4 className="font-semibold mb-2">Disponibilidades de Motoristas:</h4>
                   <p className="text-white/90">
-                    Cadastre sua disponibilidade informando horários, capacidade do veículo, tipo de serviço (privativo ou coletivo) e rota. 
-                    Receba solicitações de passageiros interessados.
+                    Cadastre sua disponibilidade informando horários, capacidade do veículo, tipo de serviço (privativo ou coletivo) e rota.
                   </p>
                 </div>
                 <div>

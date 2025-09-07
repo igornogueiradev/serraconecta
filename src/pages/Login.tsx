@@ -137,10 +137,6 @@ export default function Login({ onLogin }: LoginProps) {
           </CardContent>
         </Card>
 
-        <div className="text-center text-white/60 text-sm">
-          <p>Porto Alegre ↔ Gramado</p>
-          <p>Conectando passageiros e motoristas</p>
-        </div>
       </div>
     </div>
   );
