@@ -6,6 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Car } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface LoginProps {
   onLogin: (userName: string) => void;
@@ -16,13 +19,98 @@ export default function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [userType, setUserType] = useState("passenger");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulação de login
-    onLogin(name || "Motorista Demo");
-    navigate("/");
+    setIsLoading(true);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        toast({
+          title: "Erro no login",
+          description: error.message === "Invalid login credentials" ? 
+            "Email ou senha incorretos" : error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        // Buscar dados do perfil
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', data.user.id)
+          .single();
+        
+        onLogin(profile?.full_name || "Usuário");
+        navigate("/");
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: name,
+            phone: phone,
+            user_type: userType
+          }
+        }
+      });
+
+      if (error) {
+        toast({
+          title: "Erro no cadastro",
+          description: error.message === "User already registered" ? 
+            "Este email já está cadastrado" : error.message,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (data.user) {
+        toast({
+          title: "Cadastro realizado!",
+          description: "Confirme seu email para completar o cadastro",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -63,6 +151,7 @@ export default function Login({ onLogin }: LoginProps) {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -74,16 +163,17 @@ export default function Login({ onLogin }: LoginProps) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
                   </div>
-                  <Button type="submit" variant="primary" className="w-full">
-                    Entrar
+                  <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Entrando..." : "Entrar"}
                   </Button>
                 </form>
               </TabsContent>
 
               <TabsContent value="register" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
+                <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
                     <Input
@@ -93,6 +183,7 @@ export default function Login({ onLogin }: LoginProps) {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -104,6 +195,7 @@ export default function Login({ onLogin }: LoginProps) {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -115,7 +207,21 @@ export default function Login({ onLogin }: LoginProps) {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
+                      disabled={isLoading}
                     />
+                  </div>
+                  <div className="space-y-3">
+                    <Label>Tipo de usuário</Label>
+                    <RadioGroup value={userType} onValueChange={setUserType} disabled={isLoading}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="passenger" id="passenger" />
+                        <Label htmlFor="passenger">Passageiro</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="driver" id="driver" />
+                        <Label htmlFor="driver">Motorista</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Senha</Label>
@@ -126,10 +232,12 @@ export default function Login({ onLogin }: LoginProps) {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
+                      disabled={isLoading}
+                      minLength={6}
                     />
                   </div>
-                  <Button type="submit" variant="primary" className="w-full">
-                    Cadastrar
+                  <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
+                    {isLoading ? "Cadastrando..." : "Cadastrar"}
                   </Button>
                 </form>
               </TabsContent>

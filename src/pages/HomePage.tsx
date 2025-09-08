@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, Users, MapPin, Clock } from "lucide-react";
 import { Header } from "@/components/Header";
+import { useStats } from "@/hooks/useStats";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface HomePageProps {
   userName: string;
@@ -10,6 +12,7 @@ interface HomePageProps {
 }
 
 export default function HomePage({ userName, onLogout }: HomePageProps) {
+  const { stats, isLoading } = useStats();
   return (
     <div className="min-h-screen bg-background">
       <Header isLoggedIn={true} userName={userName} onLogout={onLogout} />
@@ -34,7 +37,11 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
                 <Car className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">12</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{stats.activeDrivers}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Motoristas disponíveis</p>
               </div>
             </CardContent>
@@ -46,7 +53,11 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
                 <Users className="w-6 h-6 text-secondary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">8</p>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-12 mb-1" />
+                ) : (
+                  <p className="text-2xl font-bold text-foreground">{stats.activeTrips}</p>
+                )}
                 <p className="text-sm text-muted-foreground">Viagens ofertadas</p>
               </div>
             </CardContent>

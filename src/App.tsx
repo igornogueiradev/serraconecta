@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -13,22 +13,70 @@ import TripsPage from "./pages/TripsPage";
 import MyDriversPage from "./pages/MyDriversPage";
 import MyTripsPage from "./pages/MyTripsPage";
 import NotFound from "./pages/NotFound";
+import { supabase } from "@/integrations/supabase/client";
+import type { User, Session } from "@supabase/supabase-js";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [userName, setUserName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          // Fetch user profile data
+          setTimeout(async () => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name')
+              .eq('user_id', session.user.id)
+              .single();
+            
+            setUserName(profile?.full_name || "Usuário");
+          }, 0);
+        } else {
+          setUserName("");
+        }
+        setIsLoading(false);
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const handleLogin = (name: string) => {
-    setIsLoggedIn(true);
     setUserName(name);
   };
 
-  const handleLogout = () => {
-    setIsLoggedIn(false);
-    setUserName("");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -38,19 +86,19 @@ const App = () => {
         <BrowserRouter>
           <SidebarProvider>
             <div className="flex min-h-screen w-full">
-              {isLoggedIn && <AppSidebar />}
+              {user && <AppSidebar />}
               <main className="flex-1">
                 <Routes>
                   <Route 
                     path="/login" 
                     element={
-                      isLoggedIn ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
+                      user ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
                     } 
                   />
                   <Route 
                     path="/" 
                     element={
-                      isLoggedIn ? 
+                      user ? 
                       <HomePage userName={userName} onLogout={handleLogout} /> : 
                       <Navigate to="/login" replace />
                     } 
@@ -58,7 +106,7 @@ const App = () => {
                   <Route 
                     path="/drivers" 
                     element={
-                      isLoggedIn ? 
+                      user ? 
                       <DriversPage userName={userName} onLogout={handleLogout} /> : 
                       <Navigate to="/login" replace />
                     } 
@@ -66,7 +114,7 @@ const App = () => {
                   <Route 
                     path="/trips" 
                     element={
-                      isLoggedIn ? 
+                      user ? 
                       <TripsPage userName={userName} onLogout={handleLogout} /> : 
                       <Navigate to="/login" replace />
                     } 
@@ -74,7 +122,7 @@ const App = () => {
                   <Route 
                     path="/my-drivers" 
                     element={
-                      isLoggedIn ? 
+                      user ? 
                       <MyDriversPage userName={userName} onLogout={handleLogout} /> : 
                       <Navigate to="/login" replace />
                     } 
@@ -82,7 +130,7 @@ const App = () => {
                   <Route 
                     path="/my-trips" 
                     element={
-                      isLoggedIn ? 
+                      user ? 
                       <MyTripsPage userName={userName} onLogout={handleLogout} /> : 
                       <Navigate to="/login" replace />
                     } 
