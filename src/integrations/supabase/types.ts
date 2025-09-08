@@ -14,13 +14,195 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      drivers: {
+        Row: {
+          additional_info: string | null
+          available_seats: number
+          created_at: string
+          departure_date: string
+          departure_time: string
+          destination: string
+          has_rooftop_carrier: boolean
+          has_trailer: boolean
+          id: string
+          origin: string
+          price: number
+          status: string
+          updated_at: string
+          user_id: string
+          vehicle_info: string | null
+        }
+        Insert: {
+          additional_info?: string | null
+          available_seats: number
+          created_at?: string
+          departure_date: string
+          departure_time: string
+          destination: string
+          has_rooftop_carrier?: boolean
+          has_trailer?: boolean
+          id?: string
+          origin: string
+          price: number
+          status?: string
+          updated_at?: string
+          user_id: string
+          vehicle_info?: string | null
+        }
+        Update: {
+          additional_info?: string | null
+          available_seats?: number
+          created_at?: string
+          departure_date?: string
+          departure_time?: string
+          destination?: string
+          has_rooftop_carrier?: boolean
+          has_trailer?: boolean
+          id?: string
+          origin?: string
+          price?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+          vehicle_info?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          full_name: string
+          id: string
+          phone: string
+          updated_at: string
+          user_id: string
+          user_type: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name: string
+          id?: string
+          phone: string
+          updated_at?: string
+          user_id: string
+          user_type: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string
+          updated_at?: string
+          user_id?: string
+          user_type?: string
+        }
+        Relationships: []
+      }
+      ratings: {
+        Row: {
+          comment: string | null
+          created_at: string
+          driver_id: string | null
+          from_user_id: string
+          id: string
+          rating: number
+          to_user_id: string
+          trip_id: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          driver_id?: string | null
+          from_user_id: string
+          id?: string
+          rating: number
+          to_user_id: string
+          trip_id?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          driver_id?: string | null
+          from_user_id?: string
+          id?: string
+          rating?: number
+          to_user_id?: string
+          trip_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_driver_id_fkey"
+            columns: ["driver_id"]
+            isOneToOne: false
+            referencedRelation: "drivers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ratings_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trips: {
+        Row: {
+          additional_info: string | null
+          created_at: string
+          departure_date: string
+          departure_time: string
+          destination: string
+          id: string
+          max_price: number | null
+          origin: string
+          passengers_count: number
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          additional_info?: string | null
+          created_at?: string
+          departure_date: string
+          departure_time: string
+          destination: string
+          id?: string
+          max_price?: number | null
+          origin: string
+          passengers_count: number
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          additional_info?: string | null
+          created_at?: string
+          departure_date?: string
+          departure_time?: string
+          destination?: string
+          id?: string
+          max_price?: number | null
+          origin?: string
+          passengers_count?: number
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      mark_expired_items: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
