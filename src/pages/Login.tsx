@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Car } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+
 
 interface LoginProps {
   onLogin: (userName: string) => void;
@@ -19,7 +19,7 @@ export default function Login({ onLogin }: LoginProps) {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [userType, setUserType] = useState("passenger");
+  const [userType, setUserType] = useState("driver");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -209,19 +209,6 @@ export default function Login({ onLogin }: LoginProps) {
                       required
                       disabled={isLoading}
                     />
-                  </div>
-                  <div className="space-y-3">
-                    <Label>Tipo de usuário</Label>
-                    <RadioGroup value={userType} onValueChange={setUserType} disabled={isLoading}>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="passenger" id="passenger" />
-                        <Label htmlFor="passenger">Passageiro</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="driver" id="driver" />
-                        <Label htmlFor="driver">Motorista</Label>
-                      </div>
-                    </RadioGroup>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Senha</Label>
