@@ -203,6 +203,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      user_has_active_content: {
+        Args: { target_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
