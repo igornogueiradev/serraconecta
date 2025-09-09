@@ -31,7 +31,6 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
     available_seats: "",
     departure_date: "",
     departure_time: "",
-    price: "",
     additional_info: "",
     has_trailer: false,
     has_rooftop_carrier: false
@@ -48,7 +47,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
         available_seats: parseInt(newDriver.available_seats) || 1,
         departure_date: newDriver.departure_date,
         departure_time: newDriver.departure_time,
-        price: parseFloat(newDriver.price) || 0,
+        price: 0,
         additional_info: newDriver.additional_info || null,
         has_trailer: newDriver.has_trailer,
         has_rooftop_carrier: newDriver.has_rooftop_carrier,
@@ -64,7 +63,6 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
           available_seats: "",
           departure_date: "",
           departure_time: "",
-          price: "",
           additional_info: "",
           has_trailer: false,
           has_rooftop_carrier: false
@@ -134,30 +132,16 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Assentos Disponíveis</Label>
-                    <Input
-                      type="number"
-                      placeholder="4"
-                      min="1"
-                      max="50"
-                      value={newDriver.available_seats}
-                      onChange={(e) => setNewDriver({...newDriver, available_seats: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Preço (R$)</Label>
-                    <Input
-                      type="number"
-                      placeholder="50.00"
-                      min="0"
-                      step="0.01"
-                      value={newDriver.price}
-                      onChange={(e) => setNewDriver({...newDriver, price: e.target.value})}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Assentos Disponíveis</Label>
+                  <Input
+                    type="number"
+                    placeholder="4"
+                    min="1"
+                    max="50"
+                    value={newDriver.available_seats}
+                    onChange={(e) => setNewDriver({...newDriver, available_seats: e.target.value})}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -304,11 +288,6 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                       <span>{route}</span>
                     </div>
                     
-                    {driver.price > 0 && (
-                      <div className="flex items-center text-sm font-medium text-primary">
-                        <span>R$ {driver.price.toFixed(2)}</span>
-                      </div>
-                    )}
 
                     {(driver.has_trailer || driver.has_rooftop_carrier) && (
                       <div className="flex gap-2">

@@ -26,7 +26,6 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
     origin: "",
     destination: "",
     passengers_count: "",
-    max_price: "",
     departure_date: "",
     departure_time: "",
     additional_info: ""
@@ -40,7 +39,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
         origin: newTrip.origin,
         destination: newTrip.destination,
         passengers_count: parseInt(newTrip.passengers_count) || 1,
-        max_price: newTrip.max_price ? parseFloat(newTrip.max_price) : null,
+        max_price: null,
         departure_date: newTrip.departure_date,
         departure_time: newTrip.departure_time,
         additional_info: newTrip.additional_info || null,
@@ -53,7 +52,6 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
           origin: "",
           destination: "",
           passengers_count: "",
-          max_price: "",
           departure_date: "",
           departure_time: "",
           additional_info: ""
@@ -114,30 +112,16 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Número de Passageiros</Label>
-                    <Input
-                      type="number"
-                      placeholder="2"
-                      min="1"
-                      max="50"
-                      value={newTrip.passengers_count}
-                      onChange={(e) => setNewTrip({...newTrip, passengers_count: e.target.value})}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Preço Máximo (R$)</Label>
-                    <Input
-                      type="number"
-                      placeholder="50.00"
-                      min="0"
-                      step="0.01"
-                      value={newTrip.max_price}
-                      onChange={(e) => setNewTrip({...newTrip, max_price: e.target.value})}
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label>Número de Passageiros</Label>
+                  <Input
+                    type="number"
+                    placeholder="2"
+                    min="1"
+                    max="50"
+                    value={newTrip.passengers_count}
+                    onChange={(e) => setNewTrip({...newTrip, passengers_count: e.target.value})}
+                  />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -248,11 +232,6 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       <span>{trip.passengers_count} passageiros</span>
                     </div>
                     
-                    {trip.max_price && (
-                      <div className="flex items-center text-sm font-medium text-primary">
-                        <span>Até R$ {trip.max_price.toFixed(2)}</span>
-                      </div>
-                    )}
                     
                     {trip.additional_info && (
                       <p className="text-sm text-muted-foreground">

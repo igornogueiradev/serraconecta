@@ -136,7 +136,7 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
                   <span>Viagens disponíveis hoje</span>
                 </div>
                 <p className="text-sm">
-                  Passageiros procurando motoristas ou oferte uma viagem quando há demanda excedente.
+                  Procure uma viagem ou oferte uma viagem quando há demanda excedente.
                 </p>
               </div>
               <div className="flex space-x-3">
