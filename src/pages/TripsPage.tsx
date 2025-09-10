@@ -104,7 +104,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                 Ofertar Viagem
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md max-h-[80vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle>Nova Oferta de Viagem</DialogTitle>
                 <DialogDescription>
