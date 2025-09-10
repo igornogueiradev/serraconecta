@@ -271,7 +271,9 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">Motorista</CardTitle>
+                        <CardTitle className="text-lg">
+                          {driver.profiles?.full_name || 'Motorista'}
+                        </CardTitle>
                         <CardDescription className="flex items-center mt-1">
                           <Clock className="w-4 h-4 mr-1" />
                           {formatDateTime(driver.departure_date, driver.departure_time)}
@@ -323,8 +325,24 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                       </p>
                     )}
                     
-                    {!expired && driver.status === 'active' && (
-                      <Button variant="primary" className="w-full mt-4">
+                    {!expired && driver.status === 'active' && driver.profiles?.phone && (
+                      <Button 
+                        variant="secondary" 
+                        className="w-full mt-4"
+                        onClick={() => {
+                          const whatsappLink = generateWhatsAppLink(
+                            driver.profiles.phone,
+                            'driver',
+                            {
+                              name: driver.profiles.full_name,
+                              route: route,
+                              time: driver.departure_time,
+                              vehicle: driver.vehicle_info || 'Veículo'
+                            }
+                          );
+                          window.open(whatsappLink, '_blank');
+                        }}
+                      >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Entrar em Contato
                       </Button>

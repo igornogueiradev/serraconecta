@@ -278,7 +278,9 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">Passageiro</CardTitle>
+                        <CardTitle className="text-lg">
+                          {trip.profiles?.full_name || 'Passageiro'}
+                        </CardTitle>
                         <CardDescription className="flex items-center mt-1">
                           <Clock className="w-4 h-4 mr-1" />
                           {formatDateTime(trip.departure_date, trip.departure_time)}
@@ -316,8 +318,24 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       </p>
                     )}
                     
-                    {!expired && trip.status === 'active' && (
-                      <Button variant="secondary" className="w-full mt-4">
+                    {!expired && trip.status === 'active' && trip.profiles?.phone && (
+                      <Button 
+                        variant="secondary" 
+                        className="w-full mt-4"
+                        onClick={() => {
+                          const whatsappLink = generateWhatsAppLink(
+                            trip.profiles.phone,
+                            'trip',
+                            {
+                              name: trip.profiles.full_name,
+                              route: route,
+                              date: trip.departure_date,
+                              time: trip.departure_time
+                            }
+                          );
+                          window.open(whatsappLink, '_blank');
+                        }}
+                      >
                         <MessageCircle className="w-4 h-4 mr-2" />
                         Aceitar Viagem
                       </Button>

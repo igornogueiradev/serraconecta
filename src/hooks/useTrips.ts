@@ -3,8 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
-type Trip = Tables<'trips'>;
-type TripInsert = Omit<Trip, 'id' | 'created_at' | 'updated_at' | 'user_id'>;
+type Trip = Tables<'trips'> & {
+  profiles?: {
+    full_name: string;
+    phone: string;
+  } | null;
+};
+type TripInsert = Omit<Tables<'trips'>, 'id' | 'created_at' | 'updated_at' | 'user_id'>;
 
 export const useTrips = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -15,14 +20,32 @@ export const useTrips = () => {
   const fetchTrips = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch trips
+      const { data: tripsData, error: tripsError } = await supabase
         .from('trips')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setTrips(data || []);
+      if (tripsError) throw tripsError;
+
+      // Fetch profiles for these trips
+      const userIds = tripsData?.map(trip => trip.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Join the data
+      const tripsWithProfiles = tripsData?.map(trip => ({
+        ...trip,
+        profiles: profilesData?.find(profile => profile.user_id === trip.user_id) || null
+      })) || [];
+
+      setTrips(tripsWithProfiles as Trip[]);
     } catch (err) {
       console.error('Error fetching trips:', err);
       setError('Erro ao carregar viagens');

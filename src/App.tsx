@@ -88,6 +88,12 @@ const App = () => {
             <div className="flex min-h-screen w-full">
               {user && <AppSidebar />}
               <main className="flex-1">
+                {/* Mobile menu trigger */}
+                {user && (
+                  <div className="md:hidden sticky top-0 z-50 bg-background border-b px-4 py-2">
+                    <SidebarTrigger />
+                  </div>
+                )}
                 <Routes>
                   <Route 
                     path="/login" 

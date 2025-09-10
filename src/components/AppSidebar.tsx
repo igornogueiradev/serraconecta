@@ -36,8 +36,9 @@ export function AppSidebar() {
 
   return (
     <Sidebar
-      className={isCollapsed ? "w-14" : "w-60"}
       collapsible="icon"
+      side="left"
+      variant="sidebar"
     >
       <SidebarTrigger className="m-2 self-end" />
 
@@ -50,8 +51,8 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={({ isActive }) => getNavCls({ isActive })}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                       <item.icon className="mr-2 h-4 w-4" />
+                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -68,8 +69,8 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
-                      <item.icon className="mr-2 h-4 w-4" />
-                      {!isCollapsed && <span>{item.title}</span>}
+                       <item.icon className="mr-2 h-4 w-4" />
+                       <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

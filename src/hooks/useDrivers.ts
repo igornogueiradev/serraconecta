@@ -3,8 +3,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
 
-type Driver = Tables<'drivers'>;
-type DriverInsert = Omit<Driver, 'id' | 'created_at' | 'updated_at' | 'user_id'>;
+type Driver = Tables<'drivers'> & {
+  profiles?: {
+    full_name: string;
+    phone: string;
+  } | null;
+};
+type DriverInsert = Omit<Tables<'drivers'>, 'id' | 'created_at' | 'updated_at' | 'user_id'>;
 
 export const useDrivers = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -15,14 +20,32 @@ export const useDrivers = () => {
   const fetchDrivers = async () => {
     try {
       setIsLoading(true);
-      const { data, error } = await supabase
+      
+      // Fetch drivers
+      const { data: driversData, error: driversError } = await supabase
         .from('drivers')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setDrivers(data || []);
+      if (driversError) throw driversError;
+
+      // Fetch profiles for these drivers
+      const userIds = driversData?.map(driver => driver.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .in('user_id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Join the data
+      const driversWithProfiles = driversData?.map(driver => ({
+        ...driver,
+        profiles: profilesData?.find(profile => profile.user_id === driver.user_id) || null
+      })) || [];
+
+      setDrivers(driversWithProfiles as Driver[]);
     } catch (err) {
       console.error('Error fetching drivers:', err);
       setError('Erro ao carregar motoristas');
