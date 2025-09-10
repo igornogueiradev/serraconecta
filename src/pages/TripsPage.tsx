@@ -321,7 +321,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                     
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Users className="w-4 h-4 mr-2" />
-                      <span>Serviço: {trip.service_type.charAt(0).toUpperCase() + trip.service_type.slice(1)}</span>
+                      <span>Serviço: {(trip as any).service_type ? (trip as any).service_type.charAt(0).toUpperCase() + (trip as any).service_type.slice(1) : 'Coletivo'}</span>
                     </div>
                     
                     <div className="text-sm text-muted-foreground">
@@ -329,27 +329,27 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                         🧳 Bagagens:
                       </p>
                       <div className="ml-6 space-y-1">
-                        {trip.baggage_23kg > 0 && (
-                          <p>• {trip.baggage_23kg} bagagem(ns) 23kg</p>
+                        {(trip as any).baggage_23kg > 0 && (
+                          <p>• {(trip as any).baggage_23kg} bagagem(ns) 23kg</p>
                         )}
-                        {trip.baggage_10kg > 0 && (
-                          <p>• {trip.baggage_10kg} bagagem(ns) 10kg</p>
+                        {(trip as any).baggage_10kg > 0 && (
+                          <p>• {(trip as any).baggage_10kg} bagagem(ns) 10kg</p>
                         )}
-                        {trip.baggage_bags > 0 && (
-                          <p>• {trip.baggage_bags} bolsa(s)/mochila(s)</p>
+                        {(trip as any).baggage_bags > 0 && (
+                          <p>• {(trip as any).baggage_bags} bolsa(s)/mochila(s)</p>
                         )}
                       </div>
                     </div>
                     
                     <div className="text-sm text-muted-foreground space-y-1">
-                      {trip.adults_count > 0 && (
+                      {(trip as any).adults_count > 0 && (
                         <p className="flex items-center gap-2">
-                          👨‍💼 {trip.adults_count} adultos
+                          👨‍💼 {(trip as any).adults_count} adultos
                         </p>
                       )}
-                      {trip.children_count > 0 && (
+                      {(trip as any).children_count > 0 && (
                         <p className="flex items-center gap-2">
-                          👶 {trip.children_count} crianças
+                          👶 {(trip as any).children_count} crianças
                         </p>
                       )}
                     </div>

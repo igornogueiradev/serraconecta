@@ -320,7 +320,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                     
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Car className="w-4 h-4 mr-2" />
-                      <span>Serviço: {driver.service_type === 'ambos' ? 'Coletivo e Privativo' : driver.service_type.charAt(0).toUpperCase() + driver.service_type.slice(1)}</span>
+                      <span>Serviço: {(driver as any).service_type ? ((driver as any).service_type === 'ambos' ? 'Coletivo e Privativo' : (driver as any).service_type.charAt(0).toUpperCase() + (driver as any).service_type.slice(1)) : 'Coletivo'}</span>
                     </div>
                     
 

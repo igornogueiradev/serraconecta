@@ -155,6 +155,11 @@ export type Database = {
       trips: {
         Row: {
           additional_info: string | null
+          adults_count: number
+          baggage_10kg: number
+          baggage_23kg: number
+          baggage_bags: number
+          children_count: number
           created_at: string
           departure_date: string
           departure_time: string
@@ -170,6 +175,11 @@ export type Database = {
         }
         Insert: {
           additional_info?: string | null
+          adults_count?: number
+          baggage_10kg?: number
+          baggage_23kg?: number
+          baggage_bags?: number
+          children_count?: number
           created_at?: string
           departure_date: string
           departure_time: string
@@ -185,6 +195,11 @@ export type Database = {
         }
         Update: {
           additional_info?: string | null
+          adults_count?: number
+          baggage_10kg?: number
+          baggage_23kg?: number
+          baggage_bags?: number
+          children_count?: number
           created_at?: string
           departure_date?: string
           departure_time?: string
