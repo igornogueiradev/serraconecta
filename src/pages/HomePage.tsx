@@ -24,7 +24,7 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
             Olá, {userName}! 👋
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Gerencie suas viagens entre Porto Alegre e Gramado. Ofereça sua disponibilidade 
+            Gerencie suas viagens na Serra Gaúcha. Ofereça sua disponibilidade 
             ou encontre viagens que precisam de motoristas.
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>Próximas disponibilidades hoje</span>
+                  <span>Próximas disponibilidades</span>
                 </div>
                 <p className="text-sm">
                   Veja quais motoristas estão disponíveis para transfer ou adicione sua própria disponibilidade.
@@ -133,7 +133,7 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
               <div className="space-y-3">
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  <span>Viagens disponíveis hoje</span>
+                  <span>Viagens disponíveis</span>
                 </div>
                 <p className="text-sm">
                   Procure uma viagem ou oferte uma viagem quando há demanda excedente.
