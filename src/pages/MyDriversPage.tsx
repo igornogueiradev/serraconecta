@@ -1,36 +1,26 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Users, MapPin, Clock, Star, Edit, Trash2, Calendar, Truck, Package } from "lucide-react";
-import { isExpired } from "@/utils/timeUtils";
-
-interface Driver {
-  id: string;
-  name: string;
-  rating: number;
-  vehicle: string;
-  capacity: number;
-  route: string;
-  date: string;
-  departure: string;
-  available: boolean;
-  tripType: string;
-  description: string;
-  phoneNumber: string;
-  hasTrailer: boolean;
-  hasRooftopCarrier: boolean;
-  createdBy?: string;
-}
-
+import { Car, Users, MapPin, Clock, Edit, Trash2, Calendar, Truck, Package } from "lucide-react";
 import { useDrivers } from "@/hooks/useDrivers";
+import { Skeleton } from "@/components/ui/skeleton";
+import { isExpired, formatDateTime } from "@/utils/timeUtils";
+import type { Tables } from '@/integrations/supabase/types';
+
+type Driver = Tables<'drivers'> & {
+  profiles?: {
+    full_name: string;
+    phone: string;
+  } | null;
+};
 
 interface MyDriversPageProps {
   userName: string;
@@ -38,30 +28,19 @@ interface MyDriversPageProps {
 }
 
 export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps) {
-  const [myDrivers, setMyDrivers] = useState<Driver[]>([
-    {
-      id: "1",
-      name: userName,
-      rating: 4.8,
-      vehicle: "Toyota Corolla",
-      capacity: 4,
-      route: "Porto Alegre → Gramado",
-      date: "2024-12-31",
-      departure: "14:00",
-      available: true,
-      tripType: "Privativo",
-      description: "Veículo confortável com ar condicionado",
-      phoneNumber: "51999887766",
-      hasTrailer: false,
-      hasRooftopCarrier: true,
-      createdBy: "user@email.com"
-    }
-  ]);
-
+  const { deleteDriver, updateDriver, fetchMyDrivers, isLoading } = useDrivers();
+  const [myDrivers, setMyDrivers] = useState<Driver[]>([]);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  const { deleteDriver } = useDrivers();
+  useEffect(() => {
+    loadMyDrivers();
+  }, []);
+
+  const loadMyDrivers = async () => {
+    const drivers = await fetchMyDrivers();
+    setMyDrivers(drivers || []);
+  };
 
   const handleDelete = async (id: string) => {
     const success = await deleteDriver(id);
@@ -70,10 +49,14 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
     }
   };
 
-  const toggleAvailability = (id: string) => {
-    setMyDrivers(myDrivers.map(driver => 
-      driver.id === id ? { ...driver, available: !driver.available } : driver
-    ));
+  const toggleAvailability = async (driver: Driver) => {
+    const newStatus = driver.status === 'active' ? 'inactive' : 'active';
+    const success = await updateDriver(driver.id, { status: newStatus });
+    if (success) {
+      setMyDrivers(myDrivers.map(d => 
+        d.id === driver.id ? { ...d, status: newStatus } : d
+      ));
+    }
   };
 
   const handleEdit = (driver: Driver) => {
@@ -81,13 +64,25 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
     setShowEditDialog(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (editingDriver) {
-      setMyDrivers(myDrivers.map(driver => 
-        driver.id === editingDriver.id ? editingDriver : driver
-      ));
-      setShowEditDialog(false);
-      setEditingDriver(null);
+      const success = await updateDriver(editingDriver.id, {
+        vehicle_info: editingDriver.vehicle_info,
+        available_seats: editingDriver.available_seats,
+        departure_date: editingDriver.departure_date,
+        departure_time: editingDriver.departure_time,
+        additional_info: editingDriver.additional_info,
+        has_trailer: editingDriver.has_trailer,
+        has_rooftop_carrier: editingDriver.has_rooftop_carrier,
+      });
+      
+      if (success) {
+        setMyDrivers(myDrivers.map(driver => 
+          driver.id === editingDriver.id ? editingDriver : driver
+        ));
+        setShowEditDialog(false);
+        setEditingDriver(null);
+      }
     }
   };
 
@@ -96,6 +91,39 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
       setEditingDriver({ ...editingDriver, [field]: value });
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header isLoggedIn={true} userName={userName} onLogout={onLogout} />
+        <main className="container mx-auto px-4 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
+              Minhas Disponibilidades
+            </h1>
+            <p className="text-muted-foreground">
+              Gerencie suas disponibilidades de motorista
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Card key={index} className="shadow-card">
+                <CardHeader>
+                  <Skeleton className="h-6 w-32" />
+                  <Skeleton className="h-4 w-24" />
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,123 +139,7 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {myDrivers.map((driver) => {
-            const expired = isExpired(driver.date, driver.departure);
-            const canEdit = !expired;
-            
-            return (
-              <Card key={driver.id} className={`shadow-card hover:shadow-elegant transition-all duration-300 ${expired ? 'opacity-60' : ''}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{driver.name}</CardTitle>
-                      <CardDescription className="flex items-center mt-1">
-                        <Star className="w-4 h-4 text-yellow-500 mr-1" />
-                        {driver.rating}
-                      </CardDescription>
-                    </div>
-                    <Badge variant={expired ? "destructive" : driver.available ? "default" : "secondary"}>
-                      {expired ? "Expirado" : driver.available ? "Disponível" : "Ocupado"}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-3">
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Car className="w-4 h-4 mr-2" />
-                    <span>{driver.vehicle}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Users className="w-4 h-4 mr-2" />
-                    <span>Até {driver.capacity} passageiros</span>
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    <span>{driver.route}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    <span>{new Date(driver.date).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-sm text-muted-foreground">
-                    <Clock className="w-4 h-4 mr-2" />
-                    <span>Saída: {driver.departure}</span>
-                  </div>
-
-                  <div className="flex items-center text-sm text-muted-foreground mb-2">
-                    <Badge variant="outline" className="text-xs">
-                      {driver.tripType}
-                    </Badge>
-                  </div>
-
-                  {(driver.hasTrailer || driver.hasRooftopCarrier) && (
-                    <div className="flex gap-2">
-                      {driver.hasTrailer && (
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Truck className="w-3 h-3 mr-1" />
-                          <span>Reboque</span>
-                        </div>
-                      )}
-                      {driver.hasRooftopCarrier && (
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Package className="w-3 h-3 mr-1" />
-                          <span>Bagageiro</span>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                  
-                  {driver.description && (
-                    <p className="text-sm text-muted-foreground border-t pt-3">
-                      {driver.description.length > 80 
-                        ? `${driver.description.substring(0, 80)}...` 
-                        : driver.description
-                      }
-                    </p>
-                  )}
-                  
-                  <div className="flex gap-2 pt-3 border-t">
-                    {!expired && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => toggleAvailability(driver.id)}
-                      >
-                        {driver.available ? "Marcar Ocupado" : "Marcar Disponível"}
-                      </Button>
-                    )}
-                    
-                    {canEdit && !expired && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEdit(driver)}
-                      >
-                        <Edit className="w-4 h-4 mr-1" />
-                        Editar
-                      </Button>
-                    )}
-                    
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDelete(driver.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {myDrivers.length === 0 && (
+        {myDrivers.length === 0 ? (
           <div className="text-center py-12">
             <Car className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -239,6 +151,113 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
             <Button variant="primary" onClick={() => window.location.href = '/drivers'}>
               Criar Disponibilidade
             </Button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {myDrivers.map((driver) => {
+              const expired = isExpired(driver.departure_date, driver.departure_time);
+              const canEdit = !expired;
+              
+              return (
+                <Card key={driver.id} className={`shadow-card hover:shadow-elegant transition-all duration-300 ${expired ? 'opacity-60' : ''}`}>
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-lg">
+                          {driver.profiles?.full_name || 'Motorista'}
+                        </CardTitle>
+                        <CardDescription className="flex items-center mt-1">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {formatDateTime(driver.departure_date, driver.departure_time)}
+                        </CardDescription>
+                      </div>
+                      <Badge variant={expired ? "destructive" : driver.status === 'active' ? "default" : "secondary"}>
+                        {expired ? "Expirado" : driver.status === 'active' ? "Disponível" : "Inativo"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  
+                  <CardContent className="space-y-3">
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Car className="w-4 h-4 mr-2" />
+                      <span>{driver.vehicle_info || "Veículo não informado"}</span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Users className="w-4 h-4 mr-2" />
+                      <span>Até {driver.available_seats} passageiros</span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <MapPin className="w-4 h-4 mr-2" />
+                      <span>{driver.origin} → {driver.destination}</span>
+                    </div>
+
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Car className="w-4 h-4 mr-2" />
+                      <span>Serviço: {(driver as any).service_type ? ((driver as any).service_type === 'ambos' ? 'Coletivo e Privativo' : (driver as any).service_type.charAt(0).toUpperCase() + (driver as any).service_type.slice(1)) : 'Coletivo'}</span>
+                    </div>
+
+                    {(driver.has_trailer || driver.has_rooftop_carrier) && (
+                      <div className="flex gap-2">
+                        {driver.has_trailer && (
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Truck className="w-3 h-3 mr-1" />
+                            <span>Reboque</span>
+                          </div>
+                        )}
+                        {driver.has_rooftop_carrier && (
+                          <div className="flex items-center text-xs text-muted-foreground">
+                            <Package className="w-3 h-3 mr-1" />
+                            <span>Bagageiro</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {driver.additional_info && (
+                      <p className="text-sm text-muted-foreground border-t pt-3">
+                        {driver.additional_info.length > 80 
+                          ? `${driver.additional_info.substring(0, 80)}...` 
+                          : driver.additional_info
+                        }
+                      </p>
+                    )}
+                    
+                    <div className="flex gap-2 pt-3 border-t">
+                      {!expired && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => toggleAvailability(driver)}
+                        >
+                          {driver.status === 'active' ? "Marcar Inativo" : "Marcar Ativo"}
+                        </Button>
+                      )}
+                      
+                      {canEdit && !expired && (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleEdit(driver)}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          Editar
+                        </Button>
+                      )}
+                      
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDelete(driver.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </main>
@@ -259,8 +278,8 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                 <Label htmlFor="edit-vehicle">Veículo</Label>
                 <Input
                   id="edit-vehicle"
-                  value={editingDriver.vehicle}
-                  onChange={(e) => updateEditingDriver('vehicle', e.target.value)}
+                  value={editingDriver.vehicle_info || ''}
+                  onChange={(e) => updateEditingDriver('vehicle_info', e.target.value)}
                 />
               </div>
               
@@ -271,46 +290,9 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                   type="number"
                   min="1"
                   max="50"
-                  value={editingDriver.capacity}
-                  onChange={(e) => updateEditingDriver('capacity', parseInt(e.target.value))}
+                  value={editingDriver.available_seats}
+                  onChange={(e) => updateEditingDriver('available_seats', parseInt(e.target.value))}
                 />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-route">Rota</Label>
-                  <Select 
-                    value={editingDriver.route} 
-                    onValueChange={(value) => updateEditingDriver('route', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Porto Alegre → Gramado">Porto Alegre → Gramado</SelectItem>
-                      <SelectItem value="Gramado → Porto Alegre">Gramado → Porto Alegre</SelectItem>
-                      <SelectItem value="Caxias do Sul → Gramado">Caxias do Sul → Gramado</SelectItem>
-                      <SelectItem value="Gramado → Caxias do Sul">Gramado → Caxias do Sul</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="edit-tripType">Tipo de Viagem</Label>
-                  <Select 
-                    value={editingDriver.tripType} 
-                    onValueChange={(value) => updateEditingDriver('tripType', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Privativo">Privativo</SelectItem>
-                      <SelectItem value="Coletivo">Coletivo</SelectItem>
-                      <SelectItem value="Ambos (Privativo e Coletivo)">Ambos</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
@@ -319,8 +301,8 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                   <Input
                     id="edit-date"
                     type="date"
-                    value={editingDriver.date}
-                    onChange={(e) => updateEditingDriver('date', e.target.value)}
+                    value={editingDriver.departure_date}
+                    onChange={(e) => updateEditingDriver('departure_date', e.target.value)}
                   />
                 </div>
                 
@@ -329,8 +311,8 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                   <Input
                     id="edit-departure"
                     type="time"
-                    value={editingDriver.departure}
-                    onChange={(e) => updateEditingDriver('departure', e.target.value)}
+                    value={editingDriver.departure_time}
+                    onChange={(e) => updateEditingDriver('departure_time', e.target.value)}
                   />
                 </div>
               </div>
@@ -341,8 +323,8 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="edit-hasTrailer"
-                      checked={editingDriver.hasTrailer}
-                      onCheckedChange={(checked) => updateEditingDriver('hasTrailer', checked)}
+                      checked={editingDriver.has_trailer}
+                      onCheckedChange={(checked) => updateEditingDriver('has_trailer', checked)}
                     />
                     <Label htmlFor="edit-hasTrailer" className="text-sm">
                       Possui Reboque?
@@ -352,8 +334,8 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                   <div className="flex items-center space-x-2">
                     <Checkbox
                       id="edit-hasRooftopCarrier"
-                      checked={editingDriver.hasRooftopCarrier}
-                      onCheckedChange={(checked) => updateEditingDriver('hasRooftopCarrier', checked)}
+                      checked={editingDriver.has_rooftop_carrier}
+                      onCheckedChange={(checked) => updateEditingDriver('has_rooftop_carrier', checked)}
                     />
                     <Label htmlFor="edit-hasRooftopCarrier" className="text-sm">
                       Possui Bagageiro?
@@ -366,8 +348,8 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                 <Label htmlFor="edit-description">Observações</Label>
                 <Textarea
                   id="edit-description"
-                  value={editingDriver.description}
-                  onChange={(e) => updateEditingDriver('description', e.target.value)}
+                  value={editingDriver.additional_info || ''}
+                  onChange={(e) => updateEditingDriver('additional_info', e.target.value)}
                 />
               </div>
 

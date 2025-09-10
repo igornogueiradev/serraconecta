@@ -153,6 +153,54 @@ export const useDrivers = () => {
     fetchDrivers();
   }, []);
 
+  const fetchMyDrivers = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Usuário não autenticado');
+        return;
+      }
+
+      // Fetch user's drivers
+      const { data: driversData, error: driversError } = await supabase
+        .from('drivers')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (driversError) throw driversError;
+
+      // Fetch profile for the user
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Join the data
+      const driversWithProfile = driversData?.map(driver => ({
+        ...driver,
+        profiles: profileData
+      })) || [];
+
+      return driversWithProfile as Driver[];
+    } catch (err) {
+      console.error('Error fetching my drivers:', err);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar suas disponibilidades',
+        variant: 'destructive',
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     drivers,
     isLoading,
@@ -161,5 +209,6 @@ export const useDrivers = () => {
     updateDriver,
     deleteDriver,
     refetch: fetchDrivers,
+    fetchMyDrivers,
   };
 };

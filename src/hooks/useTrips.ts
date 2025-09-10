@@ -153,6 +153,54 @@ export const useTrips = () => {
     fetchTrips();
   }, []);
 
+  const fetchMyTrips = async () => {
+    try {
+      setIsLoading(true);
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError('Usuário não autenticado');
+        return;
+      }
+
+      // Fetch user's trips
+      const { data: tripsData, error: tripsError } = await supabase
+        .from('trips')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (tripsError) throw tripsError;
+
+      // Fetch profile for the user
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_id, full_name, phone')
+        .eq('user_id', user.id)
+        .single();
+
+      if (profileError) throw profileError;
+
+      // Join the data
+      const tripsWithProfile = tripsData?.map(trip => ({
+        ...trip,
+        profiles: profileData
+      })) || [];
+
+      return tripsWithProfile as Trip[];
+    } catch (err) {
+      console.error('Error fetching my trips:', err);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível carregar suas viagens',
+        variant: 'destructive',
+      });
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return {
     trips,
     isLoading,
@@ -161,5 +209,6 @@ export const useTrips = () => {
     updateTrip,
     deleteTrip,
     refetch: fetchTrips,
+    fetchMyTrips,
   };
 };
