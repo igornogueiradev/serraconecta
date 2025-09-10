@@ -27,6 +27,7 @@ export type Database = {
           id: string
           origin: string
           price: number
+          service_type: string
           status: string
           updated_at: string
           user_id: string
@@ -44,6 +45,7 @@ export type Database = {
           id?: string
           origin: string
           price: number
+          service_type?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -61,6 +63,7 @@ export type Database = {
           id?: string
           origin?: string
           price?: number
+          service_type?: string
           status?: string
           updated_at?: string
           user_id?: string
@@ -160,6 +163,7 @@ export type Database = {
           max_price: number | null
           origin: string
           passengers_count: number
+          service_type: string
           status: string
           updated_at: string
           user_id: string
@@ -174,6 +178,7 @@ export type Database = {
           max_price?: number | null
           origin: string
           passengers_count: number
+          service_type?: string
           status?: string
           updated_at?: string
           user_id: string
@@ -188,6 +193,7 @@ export type Database = {
           max_price?: number | null
           origin?: string
           passengers_count?: number
+          service_type?: string
           status?: string
           updated_at?: string
           user_id?: string

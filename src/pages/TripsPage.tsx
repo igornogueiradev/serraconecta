@@ -34,7 +34,8 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
     bags_backpacks: "0",
     departure_date: "",
     departure_time: "",
-    additional_info: ""
+    additional_info: "",
+    service_type: "coletivo"
   });
 
   const handleSubmit = async () => {
@@ -48,7 +49,13 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
         max_price: null,
         departure_date: newTrip.departure_date,
         departure_time: newTrip.departure_time,
-        additional_info: `Adultos: ${newTrip.adults_count}, Crianças: ${newTrip.children_count}, Bagagens 23kg: ${newTrip.luggage_23kg}, Bagagens 10kg: ${newTrip.luggage_10kg}, Bolsas/Mochilas: ${newTrip.bags_backpacks}. ${newTrip.additional_info || ''}`.trim(),
+        additional_info: newTrip.additional_info || null,
+        baggage_23kg: parseInt(newTrip.luggage_23kg) || 0,
+        baggage_10kg: parseInt(newTrip.luggage_10kg) || 0,
+        baggage_bags: parseInt(newTrip.bags_backpacks) || 0,
+        adults_count: parseInt(newTrip.adults_count) || 1,
+        children_count: parseInt(newTrip.children_count) || 0,
+        service_type: newTrip.service_type,
         status: 'active' as const
       };
 
@@ -64,7 +71,8 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
           bags_backpacks: "0",
           departure_date: "",
           departure_time: "",
-          additional_info: ""
+          additional_info: "",
+          service_type: "coletivo"
         });
         setIsDialogOpen(false);
       }
@@ -128,6 +136,19 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
                       <SelectItem value="Gramado">Gramado</SelectItem>
                       <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Serviço</Label>
+                  <Select value={newTrip.service_type} onValueChange={(value) => setNewTrip({...newTrip, service_type: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de serviço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="coletivo">Coletivo</SelectItem>
+                      <SelectItem value="privativo">Privativo</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -292,22 +313,44 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                     </div>
                   </CardHeader>
                   
-                  <CardContent className="space-y-3">
+                   <CardContent className="space-y-3">
                     <div className="flex items-center text-sm text-muted-foreground">
                       <MapPin className="w-4 h-4 mr-2" />
                       <span>{route}</span>
                     </div>
                     
-                    <div className="space-y-2 text-sm text-muted-foreground">
-                      <div className="flex items-center">
-                        <Users className="w-4 h-4 mr-2" />
-                        <span>{trip.passengers_count} passageiros</span>
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Users className="w-4 h-4 mr-2" />
+                      <span>Serviço: {trip.service_type.charAt(0).toUpperCase() + trip.service_type.slice(1)}</span>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground">
+                      <p className="flex items-center gap-2 mb-1">
+                        🧳 Bagagens:
+                      </p>
+                      <div className="ml-6 space-y-1">
+                        {trip.baggage_23kg > 0 && (
+                          <p>• {trip.baggage_23kg} bagagem(ns) 23kg</p>
+                        )}
+                        {trip.baggage_10kg > 0 && (
+                          <p>• {trip.baggage_10kg} bagagem(ns) 10kg</p>
+                        )}
+                        {trip.baggage_bags > 0 && (
+                          <p>• {trip.baggage_bags} bolsa(s)/mochila(s)</p>
+                        )}
                       </div>
-                      {trip.additional_info && (
-                        <div className="flex items-center">
-                          <Luggage className="w-4 h-4 mr-2" />
-                          <span>Ver detalhes de bagagem</span>
-                        </div>
+                    </div>
+                    
+                    <div className="text-sm text-muted-foreground space-y-1">
+                      {trip.adults_count > 0 && (
+                        <p className="flex items-center gap-2">
+                          👨‍💼 {trip.adults_count} adultos
+                        </p>
+                      )}
+                      {trip.children_count > 0 && (
+                        <p className="flex items-center gap-2">
+                          👶 {trip.children_count} crianças
+                        </p>
                       )}
                     </div>
                     

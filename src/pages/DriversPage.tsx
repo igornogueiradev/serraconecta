@@ -34,7 +34,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
     departure_time: "",
     additional_info: "",
     has_trailer: false,
-    has_rooftop_carrier: false
+    has_rooftop_carrier: false,
+    service_type: "coletivo"
   });
 
   const handleSubmit = async () => {
@@ -52,6 +53,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
         additional_info: newDriver.additional_info || null,
         has_trailer: newDriver.has_trailer,
         has_rooftop_carrier: newDriver.has_rooftop_carrier,
+        service_type: newDriver.service_type,
         status: 'active' as const
       };
 
@@ -66,7 +68,8 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
           departure_time: "",
           additional_info: "",
           has_trailer: false,
-          has_rooftop_carrier: false
+          has_rooftop_carrier: false,
+          service_type: "coletivo"
         });
         setIsDialogOpen(false);
       }
@@ -130,6 +133,20 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                       <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
                       <SelectItem value="Gramado">Gramado</SelectItem>
                       <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Serviço</Label>
+                  <Select value={newDriver.service_type} onValueChange={(value) => setNewDriver({...newDriver, service_type: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o tipo de serviço" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="coletivo">Coletivo</SelectItem>
+                      <SelectItem value="privativo">Privativo</SelectItem>
+                      <SelectItem value="ambos">Ambos (Coletivo e Privativo)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -299,6 +316,11 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                     <div className="flex items-center text-sm text-muted-foreground">
                       <MapPin className="w-4 h-4 mr-2" />
                       <span>{route}</span>
+                    </div>
+                    
+                    <div className="flex items-center text-sm text-muted-foreground">
+                      <Car className="w-4 h-4 mr-2" />
+                      <span>Serviço: {driver.service_type === 'ambos' ? 'Coletivo e Privativo' : driver.service_type.charAt(0).toUpperCase() + driver.service_type.slice(1)}</span>
                     </div>
                     
 
