@@ -69,8 +69,8 @@ export default function HomePage({ userName, onLogout }: HomePageProps) {
                 <MapPin className="w-6 h-6 text-accent-foreground" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-foreground">POA ↔ GRA</p>
-                <p className="text-sm text-muted-foreground">Rota principal</p>
+                <p className="text-2xl font-bold text-foreground">Serra Gaúcha</p>
+                <p className="text-sm text-muted-foreground">Região de atuação</p>
               </div>
             </CardContent>
           </Card>

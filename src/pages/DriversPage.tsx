@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Users, MapPin, Clock, Plus, Truck, Package } from "lucide-react";
+import { Users, MapPin, Clock, Plus, Car, Star, Package, Truck, MessageCircle } from "lucide-react";
+import { generateWhatsAppLink } from "@/utils/whatsapp";
 import { useDrivers } from "@/hooks/useDrivers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
@@ -107,20 +108,30 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Origem</Label>
-                  <Input
-                    placeholder="Ex: Porto Alegre"
-                    value={newDriver.origin}
-                    onChange={(e) => setNewDriver({...newDriver, origin: e.target.value})}
-                  />
+                  <Select value={newDriver.origin} onValueChange={(value) => setNewDriver({...newDriver, origin: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
+                      <SelectItem value="Gramado">Gramado</SelectItem>
+                      <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Destino</Label>
-                  <Input
-                    placeholder="Ex: Gramado"
-                    value={newDriver.destination}
-                    onChange={(e) => setNewDriver({...newDriver, destination: e.target.value})}
-                  />
+                  <Select value={newDriver.destination} onValueChange={(value) => setNewDriver({...newDriver, destination: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
+                      <SelectItem value="Gramado">Gramado</SelectItem>
+                      <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="space-y-2">
@@ -314,6 +325,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                     
                     {!expired && driver.status === 'active' && (
                       <Button variant="primary" className="w-full mt-4">
+                        <MessageCircle className="w-4 h-4 mr-2" />
                         Entrar em Contato
                       </Button>
                     )}

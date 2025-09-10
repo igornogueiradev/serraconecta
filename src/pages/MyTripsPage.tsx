@@ -29,6 +29,8 @@ interface Trip {
   createdBy?: string;
 }
 
+import { useTrips } from "@/hooks/useTrips";
+
 interface MyTripsPageProps {
   userName: string;
   onLogout: () => void;
@@ -58,8 +60,13 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  const handleDelete = (id: string) => {
-    setMyTrips(myTrips.filter(trip => trip.id !== id));
+  const { deleteTrip } = useTrips();
+
+  const handleDelete = async (id: string) => {
+    const success = await deleteTrip(id);
+    if (success) {
+      setMyTrips(myTrips.filter(trip => trip.id !== id));
+    }
   };
 
   const updateStatus = (id: string, status: Trip["status"]) => {

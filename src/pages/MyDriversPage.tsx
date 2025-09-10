@@ -30,6 +30,8 @@ interface Driver {
   createdBy?: string;
 }
 
+import { useDrivers } from "@/hooks/useDrivers";
+
 interface MyDriversPageProps {
   userName: string;
   onLogout: () => void;
@@ -59,8 +61,13 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
 
-  const handleDelete = (id: string) => {
-    setMyDrivers(myDrivers.filter(driver => driver.id !== id));
+  const { deleteDriver } = useDrivers();
+
+  const handleDelete = async (id: string) => {
+    const success = await deleteDriver(id);
+    if (success) {
+      setMyDrivers(myDrivers.filter(driver => driver.id !== id));
+    }
   };
 
   const toggleAvailability = (id: string) => {

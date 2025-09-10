@@ -6,8 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, MapPin, Clock, Plus } from "lucide-react";
+import { Users, MapPin, Clock, Plus, MessageCircle, Luggage, Baby } from "lucide-react";
+import { generateWhatsAppLink } from "@/utils/whatsapp";
 import { useTrips } from "@/hooks/useTrips";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
@@ -25,7 +27,11 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
   const [newTrip, setNewTrip] = useState({
     origin: "",
     destination: "",
-    passengers_count: "",
+    adults_count: "1",
+    children_count: "0",
+    luggage_23kg: "0",
+    luggage_10kg: "0",
+    bags_backpacks: "0",
     departure_date: "",
     departure_time: "",
     additional_info: ""
@@ -38,11 +44,11 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
       const tripData = {
         origin: newTrip.origin,
         destination: newTrip.destination,
-        passengers_count: parseInt(newTrip.passengers_count) || 1,
+        passengers_count: parseInt(newTrip.adults_count) + parseInt(newTrip.children_count) || 1,
         max_price: null,
         departure_date: newTrip.departure_date,
         departure_time: newTrip.departure_time,
-        additional_info: newTrip.additional_info || null,
+        additional_info: `Adultos: ${newTrip.adults_count}, Crianças: ${newTrip.children_count}, Bagagens 23kg: ${newTrip.luggage_23kg}, Bagagens 10kg: ${newTrip.luggage_10kg}, Bolsas/Mochilas: ${newTrip.bags_backpacks}. ${newTrip.additional_info || ''}`.trim(),
         status: 'active' as const
       };
 
@@ -51,7 +57,11 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
         setNewTrip({
           origin: "",
           destination: "",
-          passengers_count: "",
+          adults_count: "1",
+          children_count: "0",
+          luggage_23kg: "0",
+          luggage_10kg: "0",
+          bags_backpacks: "0",
           departure_date: "",
           departure_time: "",
           additional_info: ""
@@ -96,32 +106,91 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Origem</Label>
-                  <Input
-                    placeholder="Ex: Porto Alegre"
-                    value={newTrip.origin}
-                    onChange={(e) => setNewTrip({...newTrip, origin: e.target.value})}
-                  />
+                  <Select value={newTrip.origin} onValueChange={(value) => setNewTrip({...newTrip, origin: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a origem" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
+                      <SelectItem value="Gramado">Gramado</SelectItem>
+                      <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Destino</Label>
-                  <Input
-                    placeholder="Ex: Gramado"
-                    value={newTrip.destination}
-                    onChange={(e) => setNewTrip({...newTrip, destination: e.target.value})}
-                  />
+                  <Select value={newTrip.destination} onValueChange={(value) => setNewTrip({...newTrip, destination: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o destino" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
+                      <SelectItem value="Gramado">Gramado</SelectItem>
+                      <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Adultos</Label>
+                    <Input
+                      type="number"
+                      placeholder="1"
+                      min="1"
+                      max="10"
+                      value={newTrip.adults_count}
+                      onChange={(e) => setNewTrip({...newTrip, adults_count: e.target.value})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Crianças</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      max="10"
+                      value={newTrip.children_count}
+                      onChange={(e) => setNewTrip({...newTrip, children_count: e.target.value})}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Número de Passageiros</Label>
-                  <Input
-                    type="number"
-                    placeholder="2"
-                    min="1"
-                    max="50"
-                    value={newTrip.passengers_count}
-                    onChange={(e) => setNewTrip({...newTrip, passengers_count: e.target.value})}
-                  />
+                  <Label>Bagagens</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bagagens 23kg</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={newTrip.luggage_23kg}
+                        onChange={(e) => setNewTrip({...newTrip, luggage_23kg: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bagagens 10kg</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={newTrip.luggage_10kg}
+                        onChange={(e) => setNewTrip({...newTrip, luggage_10kg: e.target.value})}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Bolsas/Mochilas</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        max="20"
+                        value={newTrip.bags_backpacks}
+                        onChange={(e) => setNewTrip({...newTrip, bags_backpacks: e.target.value})}
+                      />
+                    </div>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -227,9 +296,17 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       <span>{route}</span>
                     </div>
                     
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Users className="w-4 h-4 mr-2" />
-                      <span>{trip.passengers_count} passageiros</span>
+                    <div className="space-y-2 text-sm text-muted-foreground">
+                      <div className="flex items-center">
+                        <Users className="w-4 h-4 mr-2" />
+                        <span>{trip.passengers_count} passageiros</span>
+                      </div>
+                      {trip.additional_info && (
+                        <div className="flex items-center">
+                          <Luggage className="w-4 h-4 mr-2" />
+                          <span>Ver detalhes de bagagem</span>
+                        </div>
+                      )}
                     </div>
                     
                     
@@ -241,6 +318,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                     
                     {!expired && trip.status === 'active' && (
                       <Button variant="secondary" className="w-full mt-4">
+                        <MessageCircle className="w-4 h-4 mr-2" />
                         Aceitar Viagem
                       </Button>
                     )}
