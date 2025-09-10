@@ -2,59 +2,42 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { User, LogOut, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 interface HeaderProps {
   isLoggedIn: boolean;
   userName?: string;
   onLogout?: () => void;
 }
-
-export function Header({ isLoggedIn, userName = "Usuário", onLogout }: HeaderProps) {
+export function Header({
+  isLoggedIn,
+  userName = "Usuário",
+  onLogout
+}: HeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  return (
-    <header className="bg-card border-b shadow-sm sticky top-0 z-50">
+  return <header className="bg-card border-b shadow-sm sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link to="/" className="flex items-center space-x-2">
             <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-lg">T</span>
+              <span className="text-white font-bold text-lg">S</span>
             </div>
-            <span className="font-bold text-xl text-foreground hidden sm:block">
-              TransferRS
-            </span>
+            <span className="font-bold text-xl text-foreground hidden sm:block">SerraConecta</span>
           </Link>
 
           {/* Desktop Navigation */}
-          {isLoggedIn && (
-            <nav className="hidden md:flex items-center space-x-6">
-              <Link
-                to="/drivers"
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
+          {isLoggedIn && <nav className="hidden md:flex items-center space-x-6">
+              <Link to="/drivers" className="text-muted-foreground hover:text-primary transition-colors">
                 Disponibilidades
               </Link>
-              <Link
-                to="/trips"
-                className="text-muted-foreground hover:text-primary transition-colors"
-              >
+              <Link to="/trips" className="text-muted-foreground hover:text-primary transition-colors">
                 Viagens Ofertadas
               </Link>
-            </nav>
-          )}
+            </nav>}
 
           {/* User Menu / Login */}
           <div className="flex items-center space-x-4">
-            {isLoggedIn ? (
-              <DropdownMenu>
+            {isLoggedIn ? <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="flex items-center space-x-2">
                     <User className="w-4 h-4" />
@@ -78,51 +61,28 @@ export function Header({ isLoggedIn, userName = "Usuário", onLogout }: HeaderPr
                     Sair
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
-            ) : (
-              <Button asChild variant="primary">
+              </DropdownMenu> : <Button asChild variant="primary">
                 <Link to="/login">Entrar</Link>
-              </Button>
-            )}
+              </Button>}
 
             {/* Mobile menu button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? (
-                <X className="w-5 h-5" />
-              ) : (
-                <Menu className="w-5 h-5" />
-              )}
+            <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </Button>
           </div>
         </div>
 
         {/* Mobile Navigation */}
-        {isMobileMenuOpen && isLoggedIn && (
-          <div className="md:hidden py-4 border-t">
+        {isMobileMenuOpen && isLoggedIn && <div className="md:hidden py-4 border-t">
             <nav className="flex flex-col space-y-2">
-              <Link
-                to="/drivers"
-                className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-accent rounded-md transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link to="/drivers" className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-accent rounded-md transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Disponibilidades de Motoristas
               </Link>
-              <Link
-                to="/trips"
-                className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-accent rounded-md transition-colors"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link to="/trips" className="px-4 py-2 text-muted-foreground hover:text-primary hover:bg-accent rounded-md transition-colors" onClick={() => setIsMobileMenuOpen(false)}>
                 Viagens Ofertadas
               </Link>
             </nav>
-          </div>
-        )}
+          </div>}
       </div>
-    </header>
-  );
+    </header>;
 }
