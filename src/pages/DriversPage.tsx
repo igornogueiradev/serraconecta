@@ -101,7 +101,7 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
                 Adicionar Disponibilidade
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md max-h-[80vh] overflow-auto">
               <DialogHeader>
                 <DialogTitle>Nova Disponibilidade</DialogTitle>
                 <DialogDescription>
