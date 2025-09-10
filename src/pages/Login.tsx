@@ -8,13 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Car } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
-
-
 interface LoginProps {
   onLogin: (userName: string) => void;
 }
-
-export default function Login({ onLogin }: LoginProps) {
+export default function Login({
+  onLogin
+}: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -22,36 +21,33 @@ export default function Login({ onLogin }: LoginProps) {
   const [userType, setUserType] = useState("driver");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
-
+  const {
+    toast
+  } = useToast();
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const {
+        data,
+        error
+      } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-
       if (error) {
         toast({
           title: "Erro no login",
-          description: error.message === "Invalid login credentials" ? 
-            "Email ou senha incorretos" : error.message,
-          variant: "destructive",
+          description: error.message === "Invalid login credentials" ? "Email ou senha incorretos" : error.message,
+          variant: "destructive"
         });
         return;
       }
-
       if (data.user) {
         // Buscar dados do perfil
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('full_name')
-          .eq('user_id', data.user.id)
-          .single();
-        
+        const {
+          data: profile
+        } = await supabase.from('profiles').select('full_name').eq('user_id', data.user.id).single();
         onLogin(profile?.full_name || "Usuário");
         navigate("/");
       }
@@ -59,21 +55,21 @@ export default function Login({ onLogin }: LoginProps) {
       toast({
         title: "Erro",
         description: "Ocorreu um erro inesperado",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
     try {
       const redirectUrl = `${window.location.origin}/`;
-      
-      const { data, error } = await supabase.auth.signUp({
+      const {
+        data,
+        error
+      } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -85,43 +81,38 @@ export default function Login({ onLogin }: LoginProps) {
           }
         }
       });
-
       if (error) {
         toast({
           title: "Erro no cadastro",
-          description: error.message === "User already registered" ? 
-            "Este email já está cadastrado" : error.message,
-          variant: "destructive",
+          description: error.message === "User already registered" ? "Este email já está cadastrado" : error.message,
+          variant: "destructive"
         });
         return;
       }
-
       if (data.user) {
         toast({
           title: "Cadastro realizado!",
-          description: "Confirme seu email para completar o cadastro",
+          description: "Confirme seu email para completar o cadastro"
         });
       }
     } catch (error) {
       toast({
         title: "Erro",
         description: "Ocorreu um erro inesperado",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
-  return (
-    <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+  return <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
         {/* Logo */}
         <div className="text-center">
           <div className="mx-auto w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-elegant mb-4">
             <Car className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">TransferRS</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">SerraConecta</h1>
           <p className="text-white/80">Plataforma para motoristas autônomos</p>
         </div>
 
@@ -144,27 +135,11 @@ export default function Login({ onLogin }: LoginProps) {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={isLoading}
-                    />
+                    <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="password">Senha</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      disabled={isLoading}
-                    />
+                    <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} />
                   </div>
                   <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
                     {isLoading ? "Entrando..." : "Entrar"}
@@ -176,52 +151,19 @@ export default function Login({ onLogin }: LoginProps) {
                 <form onSubmit={handleRegister} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Nome completo</Label>
-                    <Input
-                      id="name"
-                      type="text"
-                      placeholder="Seu nome"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      required
-                      disabled={isLoading}
-                    />
+                    <Input id="name" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required disabled={isLoading} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-email">Email</Label>
-                    <Input
-                      id="register-email"
-                      type="email"
-                      placeholder="seu@email.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={isLoading}
-                    />
+                    <Input id="register-email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone">Telefone (WhatsApp)</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="(51) 99999-9999"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
-                      disabled={isLoading}
-                    />
+                    <Input id="phone" type="tel" placeholder="(51) 99999-9999" value={phone} onChange={e => setPhone(e.target.value)} required disabled={isLoading} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="register-password">Senha</Label>
-                    <Input
-                      id="register-password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      disabled={isLoading}
-                      minLength={6}
-                    />
+                    <Input id="register-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} minLength={6} />
                   </div>
                   <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
                     {isLoading ? "Cadastrando..." : "Cadastrar"}
@@ -233,6 +175,5 @@ export default function Login({ onLogin }: LoginProps) {
         </Card>
 
       </div>
-    </div>
-  );
+    </div>;
 }
