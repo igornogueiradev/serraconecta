@@ -280,10 +280,11 @@ export default function DriversPage({ userName, onLogout }: DriversPageProps) {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[...drivers]
+    .filter((driver) => !isExpired(driver.departure_date, driver.departure_time)) // 🔥 FILTRA EXPIRADOS
   .sort((a, b) => {
     const dateA = new Date(`${a.departure_date}T${a.departure_time}`);
     const dateB = new Date(`${b.departure_date}T${b.departure_time}`);
-    return dateA.getTime() - dateB.getTime(); // crescente (mais próximo primeiro)
+    return dateA.getTime() - dateB.getTime();
   })
   .map((driver) => {
     const expired = isExpired(driver.departure_date, driver.departure_time);
