@@ -19,25 +19,29 @@ export const useStats = () => {
     try {
       setIsLoading(true);
       
-      const [driversResult, tripsResult, usersResult] = await Promise.all([
-        supabase
-          .from('drivers')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'active'),
-        supabase
-          .from('trips')
-          .select('id', { count: 'exact', head: true })
-          .eq('status', 'active'),
-        supabase
-          .from('profiles')
-          .select('id', { count: 'exact', head: true }),
-      ]);
+const [driversData, tripsResult, usersResult] = await Promise.all([
+  supabase
+    .from('drivers')
+    .select('id, departure_date, departure_time', { head: false }), // buscamos as datas
+  supabase
+    .from('trips')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'active'),
+  supabase
+    .from('profiles')
+    .select('id', { count: 'exact', head: true }),
+]);
 
-      setStats({
-        activeDrivers: driversResult.count || 0,
-        activeTrips: tripsResult.count || 0,
-        totalUsers: usersResult.count || 0,
-      });    } catch (error) {
+// Filtra motoristas ativos e não expirados
+const activeDriversCount = driversData?.filter(driver => 
+  driver && !isExpired(driver.departure_date, driver.departure_time)
+).length || 0;
+
+setStats({
+  activeDrivers: activeDriversCount,
+  activeTrips: tripsResult.count || 0,
+  totalUsers: usersResult.count || 0,
+});    } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
       setIsLoading(false);
