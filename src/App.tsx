@@ -13,50 +13,33 @@ import TripsPage from "./pages/TripsPage";
 import MyDriversPage from "./pages/MyDriversPage";
 import MyTripsPage from "./pages/MyTripsPage";
 import NotFound from "./pages/NotFound";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import { auth, db } from "@/integrations/firebase/client";
+import { onAuthStateChanged, signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import type { User } from "firebase/auth";
 
 const queryClient = new QueryClient();
 
 const App = () => {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [userName, setUserName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Fetch user profile data
-          setTimeout(async () => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('full_name')
-              .eq('user_id', session.user.id)
-              .single();
-            
-            setUserName(profile?.full_name || "Usuário");
-          }, 0);
-        } else {
-          setUserName("");
-        }
-        setIsLoading(false);
-      }
-    );
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      setUser(firebaseUser);
 
-    // THEN check for existing session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+      if (firebaseUser) {
+        const profileSnap = await getDoc(doc(db, "users", firebaseUser.uid));
+        setUserName(profileSnap.data()?.full_name || "Usuário");
+      } else {
+        setUserName("");
+      }
+
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => unsubscribe();
   }, []);
 
   const handleLogin = (name: string) => {
@@ -64,7 +47,7 @@ const App = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut(auth);
   };
 
   if (isLoading) {
@@ -88,60 +71,54 @@ const App = () => {
             <div className="flex min-h-screen w-full">
               {user && <AppSidebar />}
               <main className="flex-1">
-                {/* Mobile menu trigger */}
                 {user && (
                   <div className="md:hidden sticky top-0 z-50 bg-background border-b px-4 py-2">
                     <SidebarTrigger />
                   </div>
                 )}
                 <Routes>
-                  <Route 
-                    path="/login" 
+                  <Route
+                    path="/login"
                     element={
                       user ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
-                    } 
+                    }
                   />
-                  <Route 
-                    path="/" 
+                  <Route
+                    path="/"
                     element={
-                      user ? 
-                      <HomePage userName={userName} onLogout={handleLogout} /> : 
-                      <Navigate to="/login" replace />
-                    } 
+                      user ?
+                        <HomePage userName={userName} onLogout={handleLogout} /> :
+                        <Navigate to="/login" replace />
+                    }
                   />
-                  <Route 
-                    path="/drivers" 
+                  <Route
+                    path="/drivers"
                     element={
-                      user ? 
-                      <DriversPage userName={userName} onLogout={handleLogout} /> : 
-                      <Navigate to="/login" replace />
-                    } 
+                      <DriversPage isLoggedIn={!!user} userName={userName} onLogout={handleLogout} />
+                    }
                   />
-                  <Route 
-                    path="/trips" 
+                  <Route
+                    path="/trips"
                     element={
-                      user ? 
-                      <TripsPage userName={userName} onLogout={handleLogout} /> : 
-                      <Navigate to="/login" replace />
-                    } 
+                      <TripsPage isLoggedIn={!!user} userName={userName} onLogout={handleLogout} />
+                    }
                   />
-                  <Route 
-                    path="/my-drivers" 
+                  <Route
+                    path="/my-drivers"
                     element={
-                      user ? 
-                      <MyDriversPage userName={userName} onLogout={handleLogout} /> : 
-                      <Navigate to="/login" replace />
-                    } 
+                      user ?
+                        <MyDriversPage userName={userName} onLogout={handleLogout} /> :
+                        <Navigate to="/login" replace />
+                    }
                   />
-                  <Route 
-                    path="/my-trips" 
+                  <Route
+                    path="/my-trips"
                     element={
-                      user ? 
-                      <MyTripsPage userName={userName} onLogout={handleLogout} /> : 
-                      <Navigate to="/login" replace />
-                    } 
+                      user ?
+                        <MyTripsPage userName={userName} onLogout={handleLogout} /> :
+                        <Navigate to="/login" replace />
+                    }
                   />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  collection, getDocs, addDoc, updateDoc, deleteDoc,
+  doc, query, where, documentId, orderBy,
+} from 'firebase/firestore';
+import { db, auth } from '@/integrations/firebase/client';
 import { useToast } from '@/components/ui/use-toast';
-import type { Tables } from '@/integrations/supabase/types';
-
-type Trip = Tables<'trips'> & {
-  profiles?: {
-    full_name: string;
-    phone: string;
-  } | null;
-};
-type TripInsert = Omit<Tables<'trips'>, 'id' | 'created_at' | 'updated_at' | 'user_id'>;
+import type { Trip, TripInsert } from '@/integrations/firebase/types';
 
 export const useTrips = () => {
   const [trips, setTrips] = useState<Trip[]>([]);
@@ -20,40 +16,32 @@ export const useTrips = () => {
   const fetchTrips = async () => {
     try {
       setIsLoading(true);
-      
-      // Fetch trips
-      const { data: tripsData, error: tripsError } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
 
-      if (tripsError) throw tripsError;
+      const tripsSnap = await getDocs(
+        query(collection(db, 'trips'), where('status', '==', 'active'), orderBy('created_at', 'desc'))
+      );
+      const tripsData = tripsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Trip, 'profiles'>[];
 
-      // Fetch profiles for these trips
-      const userIds = tripsData?.map(trip => trip.user_id) || [];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, phone')
-        .in('user_id', userIds);
+      const userIds = [...new Set(tripsData.map(t => t.user_id))];
+      let profilesMap: Record<string, any> = {};
 
-      if (profilesError) throw profilesError;
+      if (userIds.length > 0) {
+        const chunks: string[][] = [];
+        for (let i = 0; i < userIds.length; i += 30) chunks.push(userIds.slice(i, i + 30));
 
-      // Join the data
-      const tripsWithProfiles = tripsData?.map(trip => ({
-        ...trip,
-        profiles: profilesData?.find(profile => profile.user_id === trip.user_id) || null
-      })) || [];
+        for (const chunk of chunks) {
+          const profilesSnap = await getDocs(
+            query(collection(db, 'users'), where(documentId(), 'in', chunk))
+          );
+          profilesSnap.docs.forEach(d => { profilesMap[d.id] = { user_id: d.id, ...d.data() }; });
+        }
+      }
 
-      setTrips(tripsWithProfiles as Trip[]);
+      setTrips(tripsData.map(t => ({ ...t, profiles: profilesMap[t.user_id] || null })) as Trip[]);
     } catch (err) {
       console.error('Error fetching trips:', err);
       setError('Erro ao carregar viagens');
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar as viagens',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar as viagens', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -61,154 +49,82 @@ export const useTrips = () => {
 
   const addTrip = async (tripData: TripInsert) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       if (!user) {
-        toast({
-          title: 'Erro',
-          description: 'Usuário não autenticado',
-          variant: 'destructive',
-        });
+        toast({ title: 'Erro', description: 'Usuário não autenticado', variant: 'destructive' });
         return false;
       }
 
-      const { error } = await supabase
-        .from('trips')
-        .insert({ ...tripData, user_id: user.id });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Sucesso!',
-        description: 'Viagem ofertada com sucesso',
+      await addDoc(collection(db, 'trips'), {
+        ...tripData,
+        user_id: user.uid,
+        created_at: new Date().toISOString(),
       });
-      
+
+      toast({ title: 'Sucesso!', description: 'Viagem ofertada com sucesso' });
       await fetchTrips();
       return true;
     } catch (err) {
       console.error('Error adding trip:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível ofertar a viagem',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível ofertar a viagem', variant: 'destructive' });
       return false;
     }
   };
 
   const updateTrip = async (id: string, updates: Partial<Trip>) => {
     try {
-      const { error } = await supabase
-        .from('trips')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Sucesso!',
-        description: 'Viagem atualizada com sucesso',
-      });
-      
+      const { profiles: _, ...safeUpdates } = updates as any;
+      await updateDoc(doc(db, 'trips', id), safeUpdates);
+      toast({ title: 'Sucesso!', description: 'Viagem atualizada com sucesso' });
       await fetchTrips();
       return true;
     } catch (err) {
       console.error('Error updating trip:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar a viagem',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível atualizar a viagem', variant: 'destructive' });
       return false;
     }
   };
 
   const deleteTrip = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('trips')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Sucesso!',
-        description: 'Viagem removida com sucesso',
-      });
-      
+      await deleteDoc(doc(db, 'trips', id));
+      toast({ title: 'Sucesso!', description: 'Viagem removida com sucesso' });
       await fetchTrips();
       return true;
     } catch (err) {
       console.error('Error deleting trip:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível remover a viagem',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível remover a viagem', variant: 'destructive' });
       return false;
     }
   };
 
-  useEffect(() => {
-    fetchTrips();
-  }, []);
-
   const fetchMyTrips = async () => {
     try {
       setIsLoading(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('Usuário não autenticado');
-        return;
-      }
+      const user = auth.currentUser;
+      if (!user) { setError('Usuário não autenticado'); return []; }
 
-      // Fetch user's trips
-      const { data: tripsData, error: tripsError } = await supabase
-        .from('trips')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const tripsSnap = await getDocs(
+        query(collection(db, 'trips'), where('user_id', '==', user.uid), orderBy('created_at', 'desc'))
+      );
+      const tripsData = tripsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Trip, 'profiles'>[];
 
-      if (tripsError) throw tripsError;
+      const profileSnap = await getDocs(
+        query(collection(db, 'users'), where(documentId(), 'in', [user.uid]))
+      );
+      const profile = profileSnap.docs[0] ? { user_id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() } : null;
 
-      // Fetch profile for the user
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, phone')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Join the data
-      const tripsWithProfile = tripsData?.map(trip => ({
-        ...trip,
-        profiles: profileData
-      })) || [];
-
-      return tripsWithProfile as Trip[];
+      return tripsData.map(t => ({ ...t, profiles: profile })) as Trip[];
     } catch (err) {
       console.error('Error fetching my trips:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar suas viagens',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar suas viagens', variant: 'destructive' });
       return [];
     } finally {
       setIsLoading(false);
     }
   };
 
-  return {
-    trips,
-    isLoading,
-    error,
-    addTrip,
-    updateTrip,
-    deleteTrip,
-    refetch: fetchTrips,
-    fetchMyTrips,
-  };
+  useEffect(() => { fetchTrips(); }, []);
+
+  return { trips, isLoading, error, addTrip, updateTrip, deleteTrip, refetch: fetchTrips, fetchMyTrips };
 };

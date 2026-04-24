@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import {
+  collection, getDocs, addDoc, updateDoc, deleteDoc,
+  doc, query, where, documentId, orderBy,
+} from 'firebase/firestore';
+import { db, auth } from '@/integrations/firebase/client';
 import { useToast } from '@/components/ui/use-toast';
-import type { Tables } from '@/integrations/supabase/types';
-
-type Driver = Tables<'drivers'> & {
-  profiles?: {
-    full_name: string;
-    phone: string;
-  } | null;
-};
-type DriverInsert = Omit<Tables<'drivers'>, 'id' | 'created_at' | 'updated_at' | 'user_id'>;
+import type { Driver, DriverInsert } from '@/integrations/firebase/types';
 
 export const useDrivers = () => {
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -20,40 +16,33 @@ export const useDrivers = () => {
   const fetchDrivers = async () => {
     try {
       setIsLoading(true);
-      
-      // Fetch drivers
-      const { data: driversData, error: driversError } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('status', 'active')
-        .order('created_at', { ascending: false });
 
-      if (driversError) throw driversError;
+      const driversSnap = await getDocs(
+        query(collection(db, 'drivers'), where('status', '==', 'active'), orderBy('created_at', 'desc'))
+      );
+      const driversData = driversSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Driver, 'profiles'>[];
 
-      // Fetch profiles for these drivers
-      const userIds = driversData?.map(driver => driver.user_id) || [];
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, phone')
-        .in('user_id', userIds);
+      const userIds = [...new Set(driversData.map(d => d.user_id))];
+      let profilesMap: Record<string, any> = {};
 
-      if (profilesError) throw profilesError;
+      if (userIds.length > 0) {
+        // Firestore 'in' suporta até 30 itens
+        const chunks: string[][] = [];
+        for (let i = 0; i < userIds.length; i += 30) chunks.push(userIds.slice(i, i + 30));
 
-      // Join the data
-      const driversWithProfiles = driversData?.map(driver => ({
-        ...driver,
-        profiles: profilesData?.find(profile => profile.user_id === driver.user_id) || null
-      })) || [];
+        for (const chunk of chunks) {
+          const profilesSnap = await getDocs(
+            query(collection(db, 'users'), where(documentId(), 'in', chunk))
+          );
+          profilesSnap.docs.forEach(d => { profilesMap[d.id] = { user_id: d.id, ...d.data() }; });
+        }
+      }
 
-      setDrivers(driversWithProfiles as Driver[]);
+      setDrivers(driversData.map(d => ({ ...d, profiles: profilesMap[d.user_id] || null })) as Driver[]);
     } catch (err) {
       console.error('Error fetching drivers:', err);
       setError('Erro ao carregar motoristas');
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar os motoristas',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar os motoristas', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -61,154 +50,82 @@ export const useDrivers = () => {
 
   const addDriver = async (driverData: DriverInsert) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = auth.currentUser;
       if (!user) {
-        toast({
-          title: 'Erro',
-          description: 'Usuário não autenticado',
-          variant: 'destructive',
-        });
+        toast({ title: 'Erro', description: 'Usuário não autenticado', variant: 'destructive' });
         return false;
       }
 
-      const { error } = await supabase
-        .from('drivers')
-        .insert({ ...driverData, user_id: user.id });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Sucesso!',
-        description: 'Disponibilidade cadastrada com sucesso',
+      await addDoc(collection(db, 'drivers'), {
+        ...driverData,
+        user_id: user.uid,
+        created_at: new Date().toISOString(),
       });
-      
+
+      toast({ title: 'Sucesso!', description: 'Disponibilidade cadastrada com sucesso' });
       await fetchDrivers();
       return true;
     } catch (err) {
       console.error('Error adding driver:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível cadastrar a disponibilidade',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível cadastrar a disponibilidade', variant: 'destructive' });
       return false;
     }
   };
 
   const updateDriver = async (id: string, updates: Partial<Driver>) => {
     try {
-      const { error } = await supabase
-        .from('drivers')
-        .update(updates)
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Sucesso!',
-        description: 'Disponibilidade atualizada com sucesso',
-      });
-      
+      const { profiles: _, ...safeUpdates } = updates as any;
+      await updateDoc(doc(db, 'drivers', id), safeUpdates);
+      toast({ title: 'Sucesso!', description: 'Disponibilidade atualizada com sucesso' });
       await fetchDrivers();
       return true;
     } catch (err) {
       console.error('Error updating driver:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível atualizar a disponibilidade',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível atualizar a disponibilidade', variant: 'destructive' });
       return false;
     }
   };
 
   const deleteDriver = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('drivers')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: 'Sucesso!',
-        description: 'Disponibilidade removida com sucesso',
-      });
-      
+      await deleteDoc(doc(db, 'drivers', id));
+      toast({ title: 'Sucesso!', description: 'Disponibilidade removida com sucesso' });
       await fetchDrivers();
       return true;
     } catch (err) {
       console.error('Error deleting driver:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível remover a disponibilidade',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível remover a disponibilidade', variant: 'destructive' });
       return false;
     }
   };
 
-  useEffect(() => {
-    fetchDrivers();
-  }, []);
-
   const fetchMyDrivers = async () => {
     try {
       setIsLoading(true);
-      
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('Usuário não autenticado');
-        return;
-      }
+      const user = auth.currentUser;
+      if (!user) { setError('Usuário não autenticado'); return []; }
 
-      // Fetch user's drivers
-      const { data: driversData, error: driversError } = await supabase
-        .from('drivers')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+      const driversSnap = await getDocs(
+        query(collection(db, 'drivers'), where('user_id', '==', user.uid), orderBy('created_at', 'desc'))
+      );
+      const driversData = driversSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Driver, 'profiles'>[];
 
-      if (driversError) throw driversError;
+      const profileSnap = await getDocs(
+        query(collection(db, 'users'), where(documentId(), 'in', [user.uid]))
+      );
+      const profile = profileSnap.docs[0] ? { user_id: profileSnap.docs[0].id, ...profileSnap.docs[0].data() } : null;
 
-      // Fetch profile for the user
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_id, full_name, phone')
-        .eq('user_id', user.id)
-        .single();
-
-      if (profileError) throw profileError;
-
-      // Join the data
-      const driversWithProfile = driversData?.map(driver => ({
-        ...driver,
-        profiles: profileData
-      })) || [];
-
-      return driversWithProfile as Driver[];
+      return driversData.map(d => ({ ...d, profiles: profile })) as Driver[];
     } catch (err) {
       console.error('Error fetching my drivers:', err);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar suas disponibilidades',
-        variant: 'destructive',
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar suas disponibilidades', variant: 'destructive' });
       return [];
     } finally {
       setIsLoading(false);
     }
   };
 
-  return {
-    drivers,
-    isLoading,
-    error,
-    addDriver,
-    updateDriver,
-    deleteDriver,
-    refetch: fetchDrivers,
-    fetchMyDrivers,
-  };
+  useEffect(() => { fetchDrivers(); }, []);
+
+  return { drivers, isLoading, error, addDriver, updateDriver, deleteDriver, refetch: fetchDrivers, fetchMyDrivers };
 };

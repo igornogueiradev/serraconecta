@@ -9,18 +9,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Car, Users, MapPin, Clock, Edit, Trash2, Calendar, Truck, Package } from "lucide-react";
+import { Car, Users, MapPin, Clock, Edit, Trash2, Calendar, Truck, Package, Copy, Check } from "lucide-react";
 import { useDrivers } from "@/hooks/useDrivers";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
-import type { Tables } from '@/integrations/supabase/types';
-
-type Driver = Tables<'drivers'> & {
-  profiles?: {
-    full_name: string;
-    phone: string;
-  } | null;
-};
+import { generateShareText } from "@/utils/whatsapp";
+import { useToast } from "@/hooks/use-toast";
+import type { Driver } from '@/integrations/firebase/types';
 
 interface MyDriversPageProps {
   userName: string;
@@ -29,9 +24,11 @@ interface MyDriversPageProps {
 
 export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps) {
   const { deleteDriver, updateDriver, fetchMyDrivers, isLoading } = useDrivers();
+  const { toast } = useToast();
   const [myDrivers, setMyDrivers] = useState<Driver[]>([]);
   const [editingDriver, setEditingDriver] = useState<Driver | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   useEffect(() => {
     loadMyDrivers();
@@ -84,6 +81,22 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
         setEditingDriver(null);
       }
     }
+  };
+
+  const handleCopyShare = async (driver: Driver) => {
+    const text = generateShareText({
+      origin: driver.origin,
+      destination: driver.destination,
+      departure_date: driver.departure_date,
+      departure_time: driver.departure_time,
+      available_seats: driver.available_seats,
+      service_type: (driver as any).service_type,
+      vehicle_info: driver.vehicle_info,
+    });
+    await navigator.clipboard.writeText(text);
+    setCopiedId(driver.id);
+    toast({ title: "Texto copiado!", description: "Cole nos grupos de WhatsApp." });
+    setTimeout(() => setCopiedId(null), 2500);
   };
 
   const updateEditingDriver = (field: keyof Driver, value: any) => {
@@ -224,20 +237,34 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                       </p>
                     )}
                     
+                    {!expired && driver.status === 'active' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleCopyShare(driver)}
+                      >
+                        {copiedId === driver.id
+                          ? <><Check className="w-4 h-4 mr-1" />Copiado!</>
+                          : <><Copy className="w-4 h-4 mr-1" />Copiar para WhatsApp</>
+                        }
+                      </Button>
+                    )}
+
                     <div className="flex gap-2 pt-3 border-t">
                       {!expired && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => toggleAvailability(driver)}
                         >
                           {driver.status === 'active' ? "Marcar Inativo" : "Marcar Ativo"}
                         </Button>
                       )}
-                      
+
                       {canEdit && !expired && (
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           size="sm"
                           onClick={() => handleEdit(driver)}
                         >
@@ -245,9 +272,9 @@ export default function MyDriversPage({ userName, onLogout }: MyDriversPageProps
                           Editar
                         </Button>
                       )}
-                      
-                      <Button 
-                        variant="outline" 
+
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => handleDelete(driver.id)}
                       >

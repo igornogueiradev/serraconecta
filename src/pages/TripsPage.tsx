@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,21 +9,28 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, MapPin, Clock, Plus, MessageCircle, Luggage, Baby } from "lucide-react";
+import { Users, MapPin, Clock, Plus, MessageCircle } from "lucide-react";
 import { generateWhatsAppLink } from "@/utils/whatsapp";
 import { useTrips } from "@/hooks/useTrips";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
+import { CITIES } from "@/utils/cities";
 
 interface TripsPageProps {
+  isLoggedIn: boolean;
   userName: string;
   onLogout: () => void;
 }
 
-export default function TripsPage({ userName, onLogout }: TripsPageProps) {
+export default function TripsPage({ isLoggedIn, userName, onLogout }: TripsPageProps) {
   const { trips, isLoading, addTrip } = useTrips();
+  const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [filterOrigin, setFilterOrigin] = useState("all");
+  const [filterDestination, setFilterDestination] = useState("all");
+  const [filterDate, setFilterDate] = useState("");
 
   const [newTrip, setNewTrip] = useState({
     origin: "",
@@ -35,12 +43,20 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
     departure_date: "",
     departure_time: "",
     additional_info: "",
-    service_type: "coletivo"
+    service_type: "coletivo",
   });
+
+  const handleOfferClick = () => {
+    if (!isLoggedIn) {
+      navigate("/login");
+      return;
+    }
+    setIsDialogOpen(true);
+  };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    
+
     try {
       const tripData = {
         origin: newTrip.origin,
@@ -56,7 +72,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
         adults_count: parseInt(newTrip.adults_count) || 1,
         children_count: parseInt(newTrip.children_count) || 0,
         service_type: newTrip.service_type,
-        status: 'active' as const
+        status: 'active' as const,
       };
 
       const success = await addTrip(tripData);
@@ -72,7 +88,7 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
           departure_date: "",
           departure_time: "",
           additional_info: "",
-          service_type: "coletivo"
+          service_type: "coletivo",
         });
         setIsDialogOpen(false);
       }
@@ -81,13 +97,24 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
     }
   };
 
+  const filteredTrips = [...trips]
+    .filter((t) => !isExpired(t.departure_date, t.departure_time))
+    .filter((t) => filterOrigin === "all" || t.origin === filterOrigin)
+    .filter((t) => filterDestination === "all" || t.destination === filterDestination)
+    .filter((t) => !filterDate || t.departure_date === filterDate)
+    .sort((a, b) => {
+      const dateA = new Date(`${a.departure_date}T${a.departure_time}`);
+      const dateB = new Date(`${b.departure_date}T${b.departure_time}`);
+      return dateA.getTime() - dateB.getTime();
+    });
+
   return (
     <div className="min-h-screen bg-background">
-      <Header isLoggedIn={true} userName={userName} onLogout={onLogout} />
-      
+      <Header isLoggedIn={isLoggedIn} userName={userName} onLogout={onLogout} />
+
       <main className="container mx-auto px-4 py-8">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Viagens Ofertadas
@@ -96,7 +123,8 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
               Encontre viagens que precisam de motorista ou oferte uma nova viagem
             </p>
           </div>
-          
+
+          {isLoggedIn ? (
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="secondary" className="mt-4 sm:mt-0">
@@ -104,156 +132,204 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                 Ofertar Viagem
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md max-h-[80vh] overflow-auto">
-              <DialogHeader>
-                <DialogTitle>Nova Oferta de Viagem</DialogTitle>
-                <DialogDescription>
-                  Crie uma oferta quando não encontrar motoristas disponíveis
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Origem</Label>
-                  <Select value={newTrip.origin} onValueChange={(value) => setNewTrip({...newTrip, origin: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione a origem" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
-                      <SelectItem value="Gramado">Gramado</SelectItem>
-                      <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Destino</Label>
-                  <Select value={newTrip.destination} onValueChange={(value) => setNewTrip({...newTrip, destination: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o destino" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Caxias do Sul">Caxias do Sul</SelectItem>
-                      <SelectItem value="Gramado">Gramado</SelectItem>
-                      <SelectItem value="Porto Alegre">Porto Alegre</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Tipo de Serviço</Label>
-                  <Select value={newTrip.service_type} onValueChange={(value) => setNewTrip({...newTrip, service_type: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione o tipo de serviço" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="coletivo">Coletivo</SelectItem>
-                      <SelectItem value="privativo">Privativo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
+              <DialogContent className="sm:max-w-md max-h-[80vh] overflow-auto">
+                <DialogHeader>
+                  <DialogTitle>Nova Oferta de Viagem</DialogTitle>
+                  <DialogDescription>
+                    Crie uma oferta quando não encontrar motoristas disponíveis
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Adultos</Label>
-                    <Input
-                      type="number"
-                      placeholder="1"
-                      min="1"
-                      max="10"
-                      value={newTrip.adults_count}
-                      onChange={(e) => setNewTrip({...newTrip, adults_count: e.target.value})}
-                    />
+                    <Label>Origem</Label>
+                    <Select value={newTrip.origin} onValueChange={(value) => setNewTrip({ ...newTrip, origin: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a origem" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CITIES.map((city) => (
+                          <SelectItem key={city} value={city}>{city}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Crianças</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      min="0"
-                      max="10"
-                      value={newTrip.children_count}
-                      onChange={(e) => setNewTrip({...newTrip, children_count: e.target.value})}
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Bagagens</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Bagagens 23kg</Label>
+                  <div className="space-y-2">
+                    <Label>Destino</Label>
+                    <Select value={newTrip.destination} onValueChange={(value) => setNewTrip({ ...newTrip, destination: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o destino" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CITIES.map((city) => (
+                          <SelectItem key={city} value={city}>{city}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Tipo de Serviço</Label>
+                    <Select value={newTrip.service_type} onValueChange={(value) => setNewTrip({ ...newTrip, service_type: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o tipo de serviço" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="coletivo">Coletivo</SelectItem>
+                        <SelectItem value="privativo">Privativo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Adultos</Label>
                       <Input
                         type="number"
-                        min="0"
-                        max="20"
-                        value={newTrip.luggage_23kg}
-                        onChange={(e) => setNewTrip({...newTrip, luggage_23kg: e.target.value})}
+                        placeholder="1"
+                        min="1"
+                        max="10"
+                        value={newTrip.adults_count}
+                        onChange={(e) => setNewTrip({ ...newTrip, adults_count: e.target.value })}
                       />
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Bagagens 10kg</Label>
+                    <div className="space-y-2">
+                      <Label>Crianças</Label>
                       <Input
                         type="number"
+                        placeholder="0"
                         min="0"
-                        max="20"
-                        value={newTrip.luggage_10kg}
-                        onChange={(e) => setNewTrip({...newTrip, luggage_10kg: e.target.value})}
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Bolsas/Mochilas</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        max="20"
-                        value={newTrip.bags_backpacks}
-                        onChange={(e) => setNewTrip({...newTrip, bags_backpacks: e.target.value})}
+                        max="10"
+                        value={newTrip.children_count}
+                        onChange={(e) => setNewTrip({ ...newTrip, children_count: e.target.value })}
                       />
                     </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Data</Label>
-                    <Input
-                      type="date"
-                      value={newTrip.departure_date}
-                      onChange={(e) => setNewTrip({...newTrip, departure_date: e.target.value})}
+                    <Label>Bagagens</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Bagagens 23kg</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={newTrip.luggage_23kg}
+                          onChange={(e) => setNewTrip({ ...newTrip, luggage_23kg: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Bagagens 10kg</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={newTrip.luggage_10kg}
+                          onChange={(e) => setNewTrip({ ...newTrip, luggage_10kg: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Bolsas/Mochilas</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          max="20"
+                          value={newTrip.bags_backpacks}
+                          onChange={(e) => setNewTrip({ ...newTrip, bags_backpacks: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Data</Label>
+                      <Input
+                        type="date"
+                        value={newTrip.departure_date}
+                        onChange={(e) => setNewTrip({ ...newTrip, departure_date: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Horário</Label>
+                      <Input
+                        type="time"
+                        value={newTrip.departure_time}
+                        onChange={(e) => setNewTrip({ ...newTrip, departure_time: e.target.value })}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Observações</Label>
+                    <Textarea
+                      placeholder="Detalhes sobre a viagem, flexibilidade de horários, pontos de encontro..."
+                      value={newTrip.additional_info}
+                      onChange={(e) => setNewTrip({ ...newTrip, additional_info: e.target.value })}
                     />
                   </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Horário</Label>
-                    <Input
-                      type="time"
-                      value={newTrip.departure_time}
-                      onChange={(e) => setNewTrip({...newTrip, departure_time: e.target.value})}
-                    />
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Observações</Label>
-                  <Textarea
-                    placeholder="Detalhes sobre a viagem, flexibilidade de horários, pontos de encontro..."
-                    value={newTrip.additional_info}
-                    onChange={(e) => setNewTrip({...newTrip, additional_info: e.target.value})}
-                  />
+                  <Button
+                    onClick={handleSubmit}
+                    className="w-full"
+                    variant="secondary"
+                    disabled={isSubmitting || !newTrip.origin || !newTrip.destination || !newTrip.departure_date}
+                  >
+                    {isSubmitting ? "Ofertando..." : "Ofertar Viagem"}
+                  </Button>
                 </div>
-
-                <Button 
-                  onClick={handleSubmit} 
-                  className="w-full" 
-                  variant="secondary"
-                  disabled={isSubmitting || !newTrip.origin || !newTrip.destination || !newTrip.departure_date}
-                >
-                  {isSubmitting ? "Ofertando..." : "Ofertar Viagem"}
-                </Button>
-              </div>
-            </DialogContent>
+              </DialogContent>
           </Dialog>
+          ) : (
+            <Button variant="secondary" className="mt-4 sm:mt-0" onClick={() => navigate("/login")}>
+              <Plus className="w-4 h-4 mr-2" />
+              Ofertar Viagem
+            </Button>
+          )}
+        </div>
+
+        {/* Filtros */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8 p-4 bg-card rounded-lg border">
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Origem</Label>
+            <Select value={filterOrigin} onValueChange={setFilterOrigin}>
+              <SelectTrigger>
+                <SelectValue placeholder="Todas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                {CITIES.map((city) => (
+                  <SelectItem key={city} value={city}>{city}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Destino</Label>
+            <Select value={filterDestination} onValueChange={setFilterDestination}>
+              <SelectTrigger>
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {CITIES.map((city) => (
+                  <SelectItem key={city} value={city}>{city}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Data</Label>
+            <Input
+              type="date"
+              value={filterDate}
+              onChange={(e) => setFilterDate(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Trips Grid */}
@@ -273,33 +349,29 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
               </Card>
             ))}
           </div>
-        ) : trips.length === 0 ? (
+        ) : filteredTrips.length === 0 ? (
           <div className="text-center py-12">
             <Users className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium mb-2">Nenhuma viagem ofertada</h3>
             <p className="text-muted-foreground mb-4">
-              Seja o primeiro a ofertar uma viagem!
+              {filterOrigin !== "all" || filterDestination !== "all" || filterDate
+                ? "Tente ajustar os filtros."
+                : "Seja o primeiro a ofertar uma viagem!"}
             </p>
-            <Button 
-              variant="secondary"
-              onClick={() => setIsDialogOpen(true)}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Ofertar Viagem
-            </Button>
+            {filterOrigin === "all" && filterDestination === "all" && !filterDate && (
+              <Button variant="secondary" onClick={handleOfferClick}>
+                <Plus className="w-4 h-4 mr-2" />
+                Ofertar Viagem
+              </Button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {trips
-  .sort((a, b) => {
-    const dateA = new Date(`${a.departure_date}T${a.departure_time}`);
-    const dateB = new Date(`${b.departure_date}T${b.departure_time}`);
-    return dateA.getTime() - dateB.getTime(); // ordem crescente
-  })
-  .map((trip) => {
-    const expired = isExpired(trip.departure_date, trip.departure_time);
-    const route = `${trip.origin} → ${trip.destination}`;
-              
+            {filteredTrips.map((trip) => {
+              const expired = isExpired(trip.departure_date, trip.departure_time);
+              const route = `${trip.origin} → ${trip.destination}`;
+              const serviceType = (trip as any).service_type as string | undefined;
+
               return (
                 <Card key={trip.id} className={`shadow-card hover:shadow-elegant transition-all duration-300 ${expired ? 'opacity-60' : ''}`}>
                   <CardHeader className="pb-3">
@@ -318,22 +390,20 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                       </Badge>
                     </div>
                   </CardHeader>
-                  
-                   <CardContent className="space-y-3">
+
+                  <CardContent className="space-y-3">
                     <div className="flex items-center text-sm text-muted-foreground">
                       <MapPin className="w-4 h-4 mr-2" />
                       <span>{route}</span>
                     </div>
-                    
+
                     <div className="flex items-center text-sm text-muted-foreground">
                       <Users className="w-4 h-4 mr-2" />
-                      <span>Serviço: {(trip as any).service_type ? (trip as any).service_type.charAt(0).toUpperCase() + (trip as any).service_type.slice(1) : 'Coletivo'}</span>
+                      <span>Serviço: {serviceType ? serviceType.charAt(0).toUpperCase() + serviceType.slice(1) : 'Coletivo'}</span>
                     </div>
-                    
+
                     <div className="text-sm text-muted-foreground">
-                      <p className="flex items-center gap-2 mb-1">
-                        🧳 Bagagens:
-                      </p>
+                      <p className="flex items-center gap-2 mb-1">🧳 Bagagens:</p>
                       <div className="ml-6 space-y-1">
                         {(trip as any).baggage_23kg > 0 && (
                           <p>• {(trip as any).baggage_23kg} bagagem(ns) 23kg</p>
@@ -346,40 +416,35 @@ export default function TripsPage({ userName, onLogout }: TripsPageProps) {
                         )}
                       </div>
                     </div>
-                    
+
                     <div className="text-sm text-muted-foreground space-y-1">
                       {(trip as any).adults_count > 0 && (
-                        <p className="flex items-center gap-2">
-                          👨‍💼 {(trip as any).adults_count} adultos
-                        </p>
+                        <p className="flex items-center gap-2">👨‍💼 {(trip as any).adults_count} adultos</p>
                       )}
                       {(trip as any).children_count > 0 && (
-                        <p className="flex items-center gap-2">
-                          👶 {(trip as any).children_count} crianças
-                        </p>
+                        <p className="flex items-center gap-2">👶 {(trip as any).children_count} crianças</p>
                       )}
                     </div>
-                    
-                    
+
                     {trip.additional_info && (
                       <p className="text-sm text-muted-foreground">
                         {trip.additional_info}
                       </p>
                     )}
-                    
+
                     {!expired && trip.status === 'active' && trip.profiles?.phone && (
-                      <Button 
-                        variant="secondary" 
+                      <Button
+                        variant="secondary"
                         className="w-full mt-4"
                         onClick={() => {
                           const whatsappLink = generateWhatsAppLink(
-                            trip.profiles.phone,
+                            trip.profiles!.phone,
                             'trip',
                             {
-                              name: trip.profiles.full_name,
+                              name: trip.profiles!.full_name,
                               route: route,
                               date: trip.departure_date,
-                              time: trip.departure_time
+                              time: trip.departure_time,
                             }
                           );
                           window.open(whatsappLink, '_blank');

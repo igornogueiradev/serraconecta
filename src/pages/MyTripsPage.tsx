@@ -12,14 +12,7 @@ import { Users, MapPin, Luggage, Edit, Trash2, Baby, Clock, Car } from "lucide-r
 import { useTrips } from "@/hooks/useTrips";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
-import type { Tables } from '@/integrations/supabase/types';
-
-type Trip = Tables<'trips'> & {
-  profiles?: {
-    full_name: string;
-    phone: string;
-  } | null;
-};
+import type { Trip } from '@/integrations/firebase/types';
 
 interface MyTripsPageProps {
   userName: string;
