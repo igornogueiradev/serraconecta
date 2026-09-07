@@ -18,7 +18,7 @@ export const useDrivers = () => {
       setIsLoading(true);
 
       const driversSnap = await getDocs(
-        query(collection(db, 'drivers'), where('status', '==', 'active'), orderBy('created_at', 'desc'))
+        query(collection(db, 'drivers'), where('status', '==', 'active'))
       );
       const driversData = driversSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Driver, 'profiles'>[];
 
@@ -106,7 +106,7 @@ export const useDrivers = () => {
       if (!user) { setError('Usuário não autenticado'); return []; }
 
       const driversSnap = await getDocs(
-        query(collection(db, 'drivers'), where('user_id', '==', user.uid), orderBy('created_at', 'desc'))
+        query(collection(db, 'drivers'), where('user_id', '==', user.uid))
       );
       const driversData = driversSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Driver, 'profiles'>[];
 

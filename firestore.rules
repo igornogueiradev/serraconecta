@@ -16,11 +16,70 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
     }
 
-    // Perfis: leitura pública (necessário para mostrar nome/telefone nos cards),
-    // escrita apenas pelo próprio usuário
+    // Perfis: leitura pública; escrita pelo próprio usuário;
+    // qualquer autenticado pode atualizar apenas rating_avg e rating_count
     match /users/{uid} {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == uid;
+      allow update: if request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating_avg', 'rating_count']);
+    }
+
+    // Financeiro: dados privados — apenas o próprio usuário lê e escreve
+    match /receitas/{docId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+    }
+
+    match /gastos/{docId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+    }
+
+    match /agendamentos/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+      allow update: if (request.auth != null && request.auth.uid == resource.data.user_id)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['questionario_respondido'])
+            && request.resource.data.questionario_respondido == true)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['questionario_respondido', 'questionario_edicao_habilitada'])
+            && request.resource.data.questionario_edicao_habilitada == false);
+      allow delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+    }
+
+    // Questionários de clientes: leitura e escrita públicas — acesso via link com ID de agendamento
+    match /questionario_respostas/{docId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if false;
+    }
+
+    // Solicitações: visível apenas para owner e requester; criação apenas pelo solicitante
+    match /requests/{docId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.owner_id ||
+         request.auth.uid == resource.data.requester_id);
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.requester_id;
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.owner_id ||
+         request.auth.uid == resource.data.requester_id);
+      allow delete: if false;
+    }
+
+    // Leads do site: escrita pública (landing page sem auth); leitura apenas pelo dono
+    match /leads/{docId} {
+      allow create: if true;
+      allow read, update: if request.auth != null;
+      allow delete: if false;
+    }
+
+    // Avaliações: leitura pública; criação apenas pelo avaliador; imutáveis após criação
+    match /ratings/{docId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.rater_id;
+      allow update, delete: if false;
     }
   }
 }

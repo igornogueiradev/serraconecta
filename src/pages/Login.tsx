@@ -3,13 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car } from "lucide-react";
 import { auth, db } from "@/integrations/firebase/client";
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import { useToast } from "@/components/ui/use-toast";
+
+const ALLOWED_EMAIL = "igor_flavio12@hotmail.com";
 
 interface LoginProps {
   onLogin: (userName: string) => void;
@@ -18,20 +19,23 @@ interface LoginProps {
 export default function Login({ onLogin }: LoginProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [userType, setUserType] = useState("driver");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (email.toLowerCase().trim() !== ALLOWED_EMAIL) {
+      toast({ title: "Acesso restrito", description: "Este painel é de uso exclusivo.", variant: "destructive" });
+      return;
+    }
+
     setIsLoading(true);
     try {
       const { user } = await signInWithEmailAndPassword(auth, email, password);
       const profileSnap = await getDoc(doc(db, "users", user.uid));
-      const fullName = profileSnap.data()?.full_name || "Usuário";
+      const fullName = profileSnap.data()?.full_name || "Igor";
       onLogin(fullName);
       navigate("/");
     } catch (error: any) {
@@ -44,31 +48,6 @@ export default function Login({ onLogin }: LoginProps) {
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
-      await setDoc(doc(db, "users", user.uid), {
-        full_name: name,
-        phone,
-        user_type: userType,
-        created_at: new Date().toISOString(),
-      });
-      onLogin(name);
-      navigate("/");
-    } catch (error: any) {
-      const msg = error.code === "auth/email-already-in-use"
-        ? "Este email já está cadastrado"
-        : error.code === "auth/weak-password"
-          ? "A senha deve ter pelo menos 6 caracteres"
-          : "Ocorreu um erro inesperado";
-      toast({ title: "Erro no cadastro", description: msg, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
@@ -76,62 +55,30 @@ export default function Login({ onLogin }: LoginProps) {
           <div className="mx-auto w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-elegant mb-4">
             <Car className="w-8 h-8 text-primary" />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">SerraConecta</h1>
-          <p className="text-white/80">Plataforma para motoristas autônomos</p>
+          <h1 className="text-3xl font-bold text-white mb-1">Meu Executivo Gramado</h1>
+          <p className="text-white/80 text-sm">Painel de Gestão</p>
         </div>
 
         <Card className="bg-white/95 backdrop-blur-sm shadow-elegant border-0">
-          <CardHeader className="text-center">
-            <CardTitle>Bem-vindo!</CardTitle>
-            <CardDescription>Entre na sua conta ou crie uma nova</CardDescription>
+          <CardHeader className="text-center pb-2">
+            <CardTitle className="text-lg">Acesso ao Painel</CardTitle>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="login" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Entrar</TabsTrigger>
-                <TabsTrigger value="register">Cadastrar</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login" className="space-y-4">
-                <form onSubmit={handleLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input id="email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Senha</Label>
-                    <Input id="password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} />
-                  </div>
-                  <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Entrando..." : "Entrar"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="register" className="space-y-4">
-                <form onSubmit={handleRegister} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Nome completo</Label>
-                    <Input id="name" type="text" placeholder="Seu nome" value={name} onChange={e => setName(e.target.value)} required disabled={isLoading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-email">Email</Label>
-                    <Input id="register-email" type="email" placeholder="seu@email.com" value={email} onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Telefone (WhatsApp)</Label>
-                    <Input id="phone" type="tel" placeholder="(51) 99999-9999" value={phone} onChange={e => setPhone(e.target.value)} required disabled={isLoading} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Senha</Label>
-                    <Input id="register-password" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} required disabled={isLoading} minLength={6} />
-                  </div>
-                  <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Cadastrando..." : "Cadastrar"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input id="email" type="email" placeholder="seu@email.com" value={email}
+                  onChange={e => setEmail(e.target.value)} required disabled={isLoading} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Senha</Label>
+                <Input id="password" type="password" placeholder="••••••••" value={password}
+                  onChange={e => setPassword(e.target.value)} required disabled={isLoading} />
+              </div>
+              <Button type="submit" variant="primary" className="w-full" disabled={isLoading}>
+                {isLoading ? "Entrando..." : "Entrar"}
+              </Button>
+            </form>
           </CardContent>
         </Card>
       </div>

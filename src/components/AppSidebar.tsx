@@ -1,4 +1,4 @@
-import { Home, Car, Users, Settings, Edit, Trash2 } from "lucide-react";
+import { Home, DollarSign, LayoutDashboard, PlusCircle, MinusCircle, History, BarChart2, CalendarDays, UserCircle, Users2 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -10,49 +10,45 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarTrigger,
-  useSidebar,
 } from "@/components/ui/sidebar";
 
 const navigationItems = [
   { title: "Início", url: "/", icon: Home },
-  { title: "Disponibilidades", url: "/drivers", icon: Car },
-  { title: "Viagens", url: "/trips", icon: Users },
+  { title: "Leads", url: "/leads", icon: Users2 },
+  { title: "Agenda", url: "/financeiro/agenda", icon: CalendarDays },
+  { title: "Meu Perfil", url: "/perfil", icon: UserCircle },
 ];
 
-const userItems = [
-  { title: "Minhas Disponibilidades", url: "/my-drivers", icon: Car },
-  { title: "Minhas Viagens", url: "/my-trips", icon: Users },
+const financeiroItems = [
+  { title: "Dashboard", url: "/financeiro/dashboard", icon: LayoutDashboard },
+  { title: "Nova Receita", url: "/financeiro/nova-receita", icon: PlusCircle },
+  { title: "Novo Gasto", url: "/financeiro/novo-gasto", icon: MinusCircle },
+  { title: "Histórico", url: "/financeiro/historico", icon: History },
+  { title: "Relatórios", url: "/financeiro/relatorios", icon: BarChart2 },
 ];
 
 export function AppSidebar() {
-  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
-  const isCollapsed = state === "collapsed";
 
-  const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive ? "bg-muted text-primary font-medium" : "hover:bg-muted/50";
 
   return (
-    <Sidebar
-      collapsible="icon"
-      side="left"
-      variant="sidebar"
-    >
+    <Sidebar collapsible="icon" side="left" variant="sidebar">
       <SidebarTrigger className="m-2 self-end" />
 
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navegação</SidebarGroupLabel>
+          <SidebarGroupLabel>Meu Executivo Gramado</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink to={item.url} end className={({ isActive }) => getNavCls({ isActive })}>
-                       <item.icon className="mr-2 h-4 w-4" />
-                       <span>{item.title}</span>
+                    <NavLink to={item.url} end={item.url === "/"} className={({ isActive }) => getNavCls({ isActive })}>
+                      <item.icon className="mr-2 h-4 w-4" />
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -62,15 +58,18 @@ export function AppSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>Minha Conta</SidebarGroupLabel>
+          <SidebarGroupLabel>
+            <DollarSign className="mr-1 h-4 w-4" />
+            Financeiro
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {userItems.map((item) => (
+              {financeiroItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} className={({ isActive }) => getNavCls({ isActive })}>
-                       <item.icon className="mr-2 h-4 w-4" />
-                       <span>{item.title}</span>
+                      <item.icon className="mr-2 h-4 w-4" />
+                      <span>{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

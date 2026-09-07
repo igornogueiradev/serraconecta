@@ -18,7 +18,7 @@ export const useTrips = () => {
       setIsLoading(true);
 
       const tripsSnap = await getDocs(
-        query(collection(db, 'trips'), where('status', '==', 'active'), orderBy('created_at', 'desc'))
+        query(collection(db, 'trips'), where('status', '==', 'active'))
       );
       const tripsData = tripsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Trip, 'profiles'>[];
 
@@ -105,7 +105,7 @@ export const useTrips = () => {
       if (!user) { setError('Usuário não autenticado'); return []; }
 
       const tripsSnap = await getDocs(
-        query(collection(db, 'trips'), where('user_id', '==', user.uid), orderBy('created_at', 'desc'))
+        query(collection(db, 'trips'), where('user_id', '==', user.uid))
       );
       const tripsData = tripsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Omit<Trip, 'profiles'>[];
 

@@ -10,13 +10,17 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Users, MapPin, Clock, Plus, Car, Package, Truck, MessageCircle, Copy, Check, DollarSign } from "lucide-react";
-import { generateWhatsAppLink, generateShareText } from "@/utils/whatsapp";
+import { Users, MapPin, Clock, Plus, Car, Package, Truck, MessageCircle, DollarSign, Send } from "lucide-react";
+import { HelpButton } from "@/components/HelpButton";
+import { generateWhatsAppLink } from "@/utils/whatsapp";
 import { useDrivers } from "@/hooks/useDrivers";
+import { useRequests } from "@/hooks/useRequests";
+import { RatingStars } from "@/components/RatingStars";
+import { ReviewsDialog } from "@/components/ReviewsDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
 import { CITIES } from "@/utils/cities";
-import { useToast } from "@/hooks/use-toast";
+import { auth } from "@/integrations/firebase/client";
 
 interface DriversPageProps {
   isLoggedIn: boolean;
@@ -26,12 +30,13 @@ interface DriversPageProps {
 
 export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversPageProps) {
   const { drivers, isLoading, addDriver } = useDrivers();
+  const { createRequest, fetchMyRequests } = useRequests();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-
+  const [myRequestsMap, setMyRequestsMap] = useState<Record<string, { status: string; id: string }>>({});
+  const [requestingId, setRequestingId] = useState<string | null>(null);
+  const [reviewsDialog, setReviewsDialog] = useState<{ userId: string; userName: string } | null>(null);
   const [filterOrigin, setFilterOrigin] = useState("all");
   const [filterDestination, setFilterDestination] = useState("all");
   const [filterDate, setFilterDate] = useState("");
@@ -48,7 +53,38 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
     has_rooftop_carrier: false,
     service_type: "coletivo",
     price: "",
+    price_private: "",
   });
+
+  React.useEffect(() => {
+    if (!isLoggedIn) return;
+    fetchMyRequests().then(reqs => {
+      const map: Record<string, { status: string; id: string }> = {};
+      // reqs já está ordenado do mais recente para o mais antigo — só define uma vez (mais recente vence)
+      reqs.filter(r => r.type === 'driver').forEach(r => {
+        if (!map[r.reference_id]) map[r.reference_id] = { status: r.status, id: r.id! };
+      });
+      setMyRequestsMap(map);
+    });
+  }, [isLoggedIn]);
+
+  const handleSolicitar = async (driver: typeof drivers[0]) => {
+    if (!isLoggedIn) { navigate('/login'); return; }
+    if (!driver.profiles) return;
+    setRequestingId(driver.id);
+    const id = await createRequest({
+      type: 'driver',
+      reference_id: driver.id,
+      owner_id: driver.user_id,
+      owner_name: driver.profiles?.full_name,
+      origin: driver.origin,
+      destination: driver.destination,
+      departure_date: driver.departure_date,
+      departure_time: driver.departure_time,
+    });
+    if (id) setMyRequestsMap(prev => ({ ...prev, [driver.id]: { status: 'pending', id } }));
+    setRequestingId(null);
+  };
 
   const handleAddClick = () => {
     if (!isLoggedIn) {
@@ -70,6 +106,7 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
         departure_date: newDriver.departure_date,
         departure_time: newDriver.departure_time,
         price: parseFloat(newDriver.price) || 0,
+        price_private: parseFloat(newDriver.price_private) || undefined,
         additional_info: newDriver.additional_info || null,
         has_trailer: newDriver.has_trailer,
         has_rooftop_carrier: newDriver.has_rooftop_carrier,
@@ -91,6 +128,7 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
           has_rooftop_carrier: false,
           service_type: "coletivo",
           price: "",
+          price_private: "",
         });
         setIsDialogOpen(false);
       }
@@ -99,31 +137,17 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
     }
   };
 
-  const handleCopyShare = async (driver: typeof drivers[0]) => {
-    const text = generateShareText({
-      origin: driver.origin,
-      destination: driver.destination,
-      departure_date: driver.departure_date,
-      departure_time: driver.departure_time,
-      available_seats: driver.available_seats,
-      service_type: (driver as any).service_type,
-      vehicle_info: driver.vehicle_info,
-    });
-    await navigator.clipboard.writeText(text);
-    setCopiedId(driver.id);
-    toast({ title: "Texto copiado!", description: "Cole nos grupos de WhatsApp." });
-    setTimeout(() => setCopiedId(null), 2500);
-  };
-
   const filteredDrivers = [...drivers]
     .filter((d) => !isExpired(d.departure_date, d.departure_time))
     .filter((d) => filterOrigin === "all" || d.origin === filterOrigin)
     .filter((d) => filterDestination === "all" || d.destination === filterDestination)
     .filter((d) => !filterDate || d.departure_date === filterDate)
     .sort((a, b) => {
-      const dateA = new Date(`${a.departure_date}T${a.departure_time}`);
-      const dateB = new Date(`${b.departure_date}T${b.departure_time}`);
-      return dateA.getTime() - dateB.getTime();
+      const tA = new Date(`${a.departure_date}T${a.departure_time || '00:00'}`).getTime();
+      const tB = new Date(`${b.departure_date}T${b.departure_time || '00:00'}`).getTime();
+      if (isNaN(tA)) return 1;
+      if (isNaN(tB)) return -1;
+      return tA - tB;
     });
 
   return (
@@ -134,9 +158,12 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
-              Disponibilidades de Motoristas
-            </h1>
+            <div className="flex items-center gap-2 mb-2">
+              <h1 className="text-3xl font-bold text-foreground">
+                Disponibilidades de Motoristas
+              </h1>
+              <HelpButton pageKey="disponibilidades" />
+            </div>
             <p className="text-muted-foreground">
               Encontre motoristas disponíveis ou ofereça sua disponibilidade
             </p>
@@ -209,31 +236,84 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Assentos Disponíveis</Label>
-                      <Input
-                        type="number"
-                        placeholder="4"
-                        min="1"
-                        max="50"
-                        value={newDriver.available_seats}
-                        onChange={(e) => setNewDriver({ ...newDriver, available_seats: e.target.value })}
-                      />
+                  {newDriver.service_type !== 'ambos' ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Assentos Disponíveis</Label>
+                        <Input
+                          type="number"
+                          placeholder="4"
+                          min="1"
+                          max="50"
+                          value={newDriver.available_seats}
+                          onChange={(e) => setNewDriver({ ...newDriver, available_seats: e.target.value })}
+                        />
+                      </div>
+                      {newDriver.service_type === 'coletivo' ? (
+                        <div className="space-y-2">
+                          <Label>Preço por Assento (R$)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0,00"
+                            min="0"
+                            step="0.01"
+                            value={newDriver.price}
+                            onChange={(e) => setNewDriver({ ...newDriver, price: e.target.value })}
+                          />
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <Label>Valor Total (R$)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0,00"
+                            min="0"
+                            step="0.01"
+                            value={newDriver.price_private}
+                            onChange={(e) => setNewDriver({ ...newDriver, price_private: e.target.value })}
+                          />
+                        </div>
+                      )}
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Preço por Assento (R$)</Label>
-                      <Input
-                        type="number"
-                        placeholder="0,00"
-                        min="0"
-                        step="0.01"
-                        value={newDriver.price}
-                        onChange={(e) => setNewDriver({ ...newDriver, price: e.target.value })}
-                      />
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="space-y-2">
+                        <Label>Assentos Disponíveis</Label>
+                        <Input
+                          type="number"
+                          placeholder="4"
+                          min="1"
+                          max="50"
+                          value={newDriver.available_seats}
+                          onChange={(e) => setNewDriver({ ...newDriver, available_seats: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label>Preço por Assento (R$)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0,00"
+                            min="0"
+                            step="0.01"
+                            value={newDriver.price}
+                            onChange={(e) => setNewDriver({ ...newDriver, price: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Valor Total Privativo (R$)</Label>
+                          <Input
+                            type="number"
+                            placeholder="0,00"
+                            min="0"
+                            step="0.01"
+                            value={newDriver.price_private}
+                            onChange={(e) => setNewDriver({ ...newDriver, price_private: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -406,8 +486,15 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
                   <CardHeader className="pb-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className="text-lg">
+                        <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
                           {driver.profiles?.full_name || 'Motorista'}
+                          {driver.profiles?.rating_count ? (
+                            <RatingStars
+                              value={driver.profiles.rating_avg ?? 0}
+                              count={driver.profiles.rating_count}
+                              onClick={() => setReviewsDialog({ userId: driver.user_id, userName: driver.profiles!.full_name })}
+                            />
+                          ) : null}
                         </CardTitle>
                         <CardDescription className="flex items-center mt-1">
                           <Clock className="w-4 h-4 mr-1" />
@@ -441,10 +528,16 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
                       <span>Serviço: {serviceLabel}</span>
                     </div>
 
-                    {(driver as any).price > 0 && (
+                    {(driver as any).service_type !== 'privativo' && (driver as any).price > 0 && (
                       <div className="flex items-center text-sm text-muted-foreground">
                         <DollarSign className="w-4 h-4 mr-2" />
                         <span>R$ {Number((driver as any).price).toFixed(2)} por assento</span>
+                      </div>
+                    )}
+                    {(driver as any).service_type !== 'coletivo' && (driver as any).price_private > 0 && (
+                      <div className="flex items-center text-sm text-muted-foreground">
+                        <DollarSign className="w-4 h-4 mr-2" />
+                        <span>R$ {Number((driver as any).price_private).toFixed(2)} total (privativo)</span>
                       </div>
                     )}
 
@@ -495,19 +588,27 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
                           Entrar em Contato
                         </Button>
                       )}
-
-                      {!expired && driver.status === 'active' && (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => handleCopyShare(driver)}
-                        >
-                          {copiedId === driver.id
-                            ? <><Check className="w-4 h-4 mr-2" />Copiado!</>
-                            : <><Copy className="w-4 h-4 mr-2" />Copiar para WhatsApp</>
-                          }
-                        </Button>
-                      )}
+                      {!expired && driver.status === 'active' && driver.user_id !== auth.currentUser?.uid && (() => {
+                        const req = myRequestsMap[driver.id];
+                        const isPending = req?.status === 'pending';
+                        const isAccepted = req?.status === 'accepted';
+                        const isRejected = req?.status === 'rejected';
+                        return (
+                          <Button
+                            variant="outline"
+                            className="w-full"
+                            disabled={isPending || isAccepted || requestingId === driver.id}
+                            onClick={() => !isPending && !isAccepted && handleSolicitar(driver)}
+                          >
+                            <Send className="w-4 h-4 mr-2" />
+                            {requestingId === driver.id ? 'Enviando...'
+                              : isPending ? 'Solicitação enviada'
+                              : isAccepted ? 'Solicitação aceita ✓'
+                              : isRejected ? 'Solicitar novamente'
+                              : 'Solicitar Disponibilidade'}
+                          </Button>
+                        );
+                      })()}
                     </div>
                   </CardContent>
                 </Card>
@@ -516,6 +617,15 @@ export default function DriversPage({ isLoggedIn, userName, onLogout }: DriversP
           </div>
         )}
       </main>
+
+      {reviewsDialog && (
+        <ReviewsDialog
+          open={!!reviewsDialog}
+          onOpenChange={open => !open && setReviewsDialog(null)}
+          userId={reviewsDialog.userId}
+          userName={reviewsDialog.userName}
+        />
+      )}
     </div>
   );
 }

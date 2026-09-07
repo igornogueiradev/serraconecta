@@ -8,11 +8,19 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Users, MapPin, Luggage, Edit, Trash2, Baby, Clock, Car } from "lucide-react";
+import { Users, MapPin, Edit, Trash2, Clock, Car, Copy, Check, ChevronDown, ChevronUp, CheckCircle, XCircle, Star } from "lucide-react";
+import { HelpButton } from "@/components/HelpButton";
 import { useTrips } from "@/hooks/useTrips";
+import { useRequests } from "@/hooks/useRequests";
+import { useRatings } from "@/hooks/useRatings";
+import { RatingDialog } from "@/components/RatingDialog";
+import { RatingStars } from "@/components/RatingStars";
+import { generateTripShareText, generateOwnerWhatsAppLink } from "@/utils/whatsapp";
+import { MessageCircle } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { isExpired, formatDateTime } from "@/utils/timeUtils";
-import type { Trip } from '@/integrations/firebase/types';
+import type { Trip, Request } from '@/integrations/firebase/types';
 
 interface MyTripsPageProps {
   userName: string;
@@ -21,9 +29,19 @@ interface MyTripsPageProps {
 
 export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
   const { deleteTrip, updateTrip, fetchMyTrips, isLoading } = useTrips();
+  const { fetchRequestsForOwner, updateRequestStatus, fetchUsersByIds } = useRequests();
+  const { hasRated } = useRatings();
+  const { toast } = useToast();
   const [myTrips, setMyTrips] = useState<Trip[]>([]);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [requestsByTrip, setRequestsByTrip] = useState<Record<string, Request[]>>({});
+  const [expandedRequests, setExpandedRequests] = useState<string | null>(null);
+  const [ratedOwnerSet, setRatedOwnerSet] = useState<Set<string>>(new Set());
+  const [requesterProfiles, setRequesterProfiles] = useState<Record<string, { rating_avg?: number; rating_count?: number }>>({});
+  const [ratingDialog, setRatingDialog] = useState<{ open: boolean; requestId: string; userId: string; name: string } | null>(null);
+  const [reviewsDialog, setReviewsDialog] = useState<{ userId: string; userName: string } | null>(null);
 
   useEffect(() => {
     loadMyTrips();
@@ -32,6 +50,64 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
   const loadMyTrips = async () => {
     const trips = await fetchMyTrips();
     setMyTrips(trips || []);
+    const reqs = await fetchRequestsForOwner();
+    const map: Record<string, Request[]> = {};
+    reqs.filter(r => r.type === 'trip').forEach(r => {
+      if (!map[r.reference_id]) map[r.reference_id] = [];
+      map[r.reference_id].push(r);
+    });
+    setRequestsByTrip(map);
+    const completedReqs = reqs.filter(r => r.type === 'trip' && r.status === 'completed' && r.id);
+    const ratedResults = await Promise.all(completedReqs.map(r => hasRated(r.id!).then(rated => [r.id!, rated] as const)));
+    setRatedOwnerSet(new Set(ratedResults.filter(([, rated]) => rated).map(([id]) => id)));
+    const requesterIds = [...new Set(reqs.filter(r => r.type === 'trip').map(r => r.requester_id))];
+    const profiles = await fetchUsersByIds(requesterIds);
+    setRequesterProfiles(profiles);
+  };
+
+  const handleAcceptRequest = async (req: Request, trip: Trip) => {
+    const ok = await updateRequestStatus(req.id!, 'accepted');
+    if (ok) {
+      setRequestsByTrip(prev => ({
+        ...prev,
+        [req.reference_id]: prev[req.reference_id].map(r => r.id === req.id ? { ...r, status: 'accepted' } : r),
+      }));
+      await updateTrip(trip.id, { status: 'accepted' });
+      setMyTrips(prev => prev.map(t => t.id === trip.id ? { ...t, status: 'accepted' } : t));
+    }
+  };
+
+  const handleCompleteRequest = async (req: Request) => {
+    const ok = await updateRequestStatus(req.id!, 'completed');
+    if (ok) {
+      setRequestsByTrip(prev => ({
+        ...prev,
+        [req.reference_id]: prev[req.reference_id].map(r => r.id === req.id ? { ...r, status: 'completed' } : r),
+      }));
+      await updateTrip(req.reference_id, { status: 'completed' });
+      setMyTrips(prev => prev.map(t => t.id === req.reference_id ? { ...t, status: 'completed' } : t));
+    }
+  };
+
+  const openWhatsAppForRequest = (req: Request, trip: Trip) => {
+    if (!req.requester_phone) return;
+    const link = generateOwnerWhatsAppLink(req.requester_phone, 'trip', {
+      requesterName: req.requester_name,
+      route: `${trip.origin} → ${trip.destination}`,
+      date: trip.departure_date,
+      time: trip.departure_time,
+    });
+    window.open(link, '_blank');
+  };
+
+  const handleRejectRequest = async (req: Request) => {
+    const ok = await updateRequestStatus(req.id!, 'rejected');
+    if (ok) {
+      setRequestsByTrip(prev => ({
+        ...prev,
+        [req.reference_id]: prev[req.reference_id].map(r => r.id === req.id ? { ...r, status: 'rejected' } : r),
+      }));
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -78,6 +154,26 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
     }
   };
 
+  const handleCopyShare = async (trip: Trip) => {
+    const text = generateTripShareText({
+      origin: trip.origin,
+      destination: trip.destination,
+      departure_date: trip.departure_date,
+      departure_time: trip.departure_time,
+      adults_count: (trip as any).adults_count || 1,
+      children_count: (trip as any).children_count || 0,
+      service_type: (trip as any).service_type,
+      baggage_23kg: (trip as any).baggage_23kg || 0,
+      baggage_10kg: (trip as any).baggage_10kg || 0,
+      baggage_bags: (trip as any).baggage_bags || 0,
+      additional_info: trip.additional_info,
+    });
+    await navigator.clipboard.writeText(text);
+    setCopiedId(trip.id);
+    toast({ title: "Texto copiado!", description: "Cole nos grupos de WhatsApp." });
+    setTimeout(() => setCopiedId(null), 2500);
+  };
+
   const updateEditingTrip = (field: keyof Trip, value: any) => {
     if (editingTrip) {
       setEditingTrip({ ...editingTrip, [field]: value });
@@ -108,10 +204,10 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
         <main className="container mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">
-              Minhas Viagens Ofertadas
+              Meus Repasses Ofertados
             </h1>
             <p className="text-muted-foreground">
-              Gerencie suas ofertas de viagem
+              Gerencie seus repasses ofertados
             </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -140,11 +236,14 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
       
       <main className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground mb-2">
-            Minhas Viagens Ofertadas
-          </h1>
+          <div className="flex items-center gap-2 mb-2">
+            <h1 className="text-3xl font-bold text-foreground">
+              Meus Repasses Ofertados
+            </h1>
+            <HelpButton pageKey="meus-repasses" />
+          </div>
           <p className="text-muted-foreground">
-            Gerencie suas ofertas de viagem
+            Gerencie seus repasses ofertados
           </p>
         </div>
 
@@ -152,10 +251,10 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
-              Nenhuma viagem ofertada
+              Nenhum repasse ofertado
             </h3>
             <p className="text-muted-foreground mb-4">
-              Você ainda não criou nenhuma oferta de viagem.
+              Você ainda não criou nenhum repasse.
             </p>
             <Button variant="primary" onClick={() => window.location.href = '/trips'}>
               Criar Oferta
@@ -234,6 +333,100 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
                       </p>
                     )}
                     
+                    {!expired && trip.status === "active" && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        onClick={() => handleCopyShare(trip)}
+                      >
+                        {copiedId === trip.id
+                          ? <><Check className="w-4 h-4 mr-1" />Copiado!</>
+                          : <><Copy className="w-4 h-4 mr-1" />Copiar para WhatsApp</>
+                        }
+                      </Button>
+                    )}
+
+                    {/* Seção de solicitações recebidas */}
+                    {(() => {
+                      const reqs = requestsByTrip[trip.id] ?? [];
+                      if (reqs.length === 0) return null;
+                      const pendingCount = reqs.filter(r => r.status === 'pending').length;
+                      const isExpanded = expandedRequests === trip.id;
+                      return (
+                        <div className="border rounded-lg overflow-hidden">
+                          <button
+                            className="w-full flex items-center justify-between px-3 py-2 bg-blue-50 text-blue-800 text-sm font-medium hover:bg-blue-100 transition-colors"
+                            onClick={() => setExpandedRequests(isExpanded ? null : trip.id)}
+                          >
+                            <span>
+                              Solicitações ({reqs.length})
+                              {pendingCount > 0 && <span className="ml-2 bg-orange-500 text-white text-xs rounded-full px-1.5 py-0.5">{pendingCount}</span>}
+                            </span>
+                            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                          </button>
+                          {isExpanded && (
+                            <div className="divide-y">
+                              {reqs.map(req => (
+                                <div key={req.id} className="p-3 bg-white text-sm">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-1 flex-wrap">
+                                        <p className="font-medium text-slate-800 truncate">{req.requester_name}</p>
+                                        {(() => {
+                                          const p = requesterProfiles[req.requester_id];
+                                          return p?.rating_count ? <RatingStars value={p.rating_avg ?? 0} count={p.rating_count} size="sm" onClick={() => setReviewsDialog({ userId: req.requester_id, userName: req.requester_name })} /> : null;
+                                        })()}
+                                      </div>
+                                      {req.message && <p className="text-slate-500 text-xs mt-0.5 line-clamp-2">{req.message}</p>}
+                                      <p className="text-xs text-slate-400 mt-1">
+                                        {req.status === 'pending' && '⏳ Aguardando'}
+                                        {req.status === 'accepted' && '✅ Aceita'}
+                                        {req.status === 'rejected' && '❌ Rejeitada'}
+                                        {req.status === 'completed' && '🏁 Concluída'}
+                                        {req.status === 'cancelled' && '🚫 Cancelada pelo solicitante'}
+                                      </p>
+                                    </div>
+                                    <div className="flex flex-col gap-1 flex-shrink-0">
+                                      {req.status === 'pending' && (
+                                        <>
+                                          <Button size="sm" className="h-7 text-xs" onClick={() => handleAcceptRequest(req, trip)}>
+                                            <CheckCircle className="w-3 h-3 mr-1" />Aceitar
+                                          </Button>
+                                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleRejectRequest(req)}>
+                                            <XCircle className="w-3 h-3 mr-1" />Rejeitar
+                                          </Button>
+                                        </>
+                                      )}
+                                      {req.status === 'accepted' && (
+                                        <>
+                                          {req.requester_phone && (
+                                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => openWhatsAppForRequest(req, trip)}>
+                                              <MessageCircle className="w-3 h-3 mr-1" />WhatsApp
+                                            </Button>
+                                          )}
+                                          <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleCompleteRequest(req)}>
+                                            Concluir
+                                          </Button>
+                                        </>
+                                      )}
+                                      {req.status === 'completed' && (
+                                        ratedOwnerSet.has(req.id!)
+                                          ? <p className="text-xs text-green-600">Avaliado ✓</p>
+                                          : <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setRatingDialog({ open: true, requestId: req.id!, userId: req.requester_id, name: req.requester_name })}>
+                                              <Star className="w-3 h-3 mr-1" />Avaliar
+                                            </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
                     <div className="flex gap-2 pt-3 border-t">
                       {trip.status === "active" && !expired && (
                         <Button 
@@ -272,13 +465,37 @@ export default function MyTripsPage({ userName, onLogout }: MyTripsPageProps) {
         )}
       </main>
 
+      {reviewsDialog && (
+        <ReviewsDialog
+          open={!!reviewsDialog}
+          onOpenChange={open => !open && setReviewsDialog(null)}
+          userId={reviewsDialog.userId}
+          userName={reviewsDialog.userName}
+        />
+      )}
+
+      {/* Rating Dialog */}
+      {ratingDialog && (
+        <RatingDialog
+          open={ratingDialog.open}
+          onOpenChange={open => !open && setRatingDialog(null)}
+          requestId={ratingDialog.requestId}
+          ratedUserId={ratingDialog.userId}
+          ratedUserName={ratingDialog.name}
+          onSuccess={() => {
+            if (ratingDialog) setRatedOwnerSet(prev => new Set([...prev, ratingDialog.requestId]));
+            setRatingDialog(null);
+          }}
+        />
+      )}
+
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Editar Viagem</DialogTitle>
+            <DialogTitle>Editar Repasse</DialogTitle>
             <DialogDescription>
-              Atualize as informações da sua viagem
+              Atualize as informações do seu repasse
             </DialogDescription>
           </DialogHeader>
           
