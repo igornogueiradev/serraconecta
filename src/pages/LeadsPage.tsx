@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users2, Phone, CalendarDays, ChevronDown, CheckCircle2, Clock, Star } from 'lucide-react';
 import { useLeads } from '@/hooks/useLeads';
-import type { Lead, LeadStatus } from '@/integrations/firebase/types';
+import type { Lead, LeadStatus, LeadVoo } from '@/integrations/firebase/types';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -19,12 +19,24 @@ const COR_STATUS: Record<LeadStatus, string> = {
 };
 
 const LABEL_SERVICO: Record<string, string> = {
+  transfer: 'Transfer',
+  transfer_city_tour: 'Transfer + City Tour',
   transfer_aeroporto: 'Transfer Aeroporto',
   city_tour: 'City Tour',
   vinicola: 'Vinícola',
   passeio: 'Passeio',
   outro: 'Outro',
 };
+
+function formatarData(iso?: string, hora?: string) {
+  if (!iso) return '';
+  const data = iso.split('-').reverse().join('/');
+  return hora ? `${data} às ${hora}` : data;
+}
+
+function formatarVoo(voo: LeadVoo) {
+  return [voo.companhia, voo.numero, voo.horario].filter(Boolean).join(' · ');
+}
 
 function formatarDataCriacao(iso: string) {
   try {
@@ -154,6 +166,20 @@ function CardLead({ lead, expandido, onToggle, onWhatsApp, onAgendar, onStatus }
             {lead.data_desejada && <Row label="Data desejada" value={lead.data_desejada.split('-').reverse().join('/')} />}
             {lead.destino && <Row label="Destino / Rota" value={lead.destino} />}
             {lead.servico && <Row label="Serviço" value={LABEL_SERVICO[lead.servico] ?? lead.servico} />}
+            {lead.passageiros && <Row label="Passageiros" value={lead.passageiros} />}
+            {lead.transfer?.hora && <Row label="Horário de busca" value={lead.transfer.hora} />}
+            {lead.transfer?.data_volta && (
+              <Row label="Volta" value={formatarData(lead.transfer.data_volta, lead.transfer.hora_volta)} />
+            )}
+            {lead.voo_ida && <Row label={lead.voo_volta || lead.transfer?.ida_volta ? 'Voo de ida' : 'Voo'} value={formatarVoo(lead.voo_ida)} />}
+            {lead.voo_volta && <Row label="Voo de volta" value={formatarVoo(lead.voo_volta)} />}
+            {lead.city_tour && (
+              <>
+                {lead.city_tour.roteiro && <Row label="City Tour" value={lead.city_tour.roteiro} />}
+                {lead.city_tour.data && <Row label="Data do passeio" value={formatarData(lead.city_tour.data)} />}
+                {lead.city_tour.embarque && <Row label="Embarque" value={lead.city_tour.embarque} />}
+              </>
+            )}
             {lead.mensagem && (
               <div className="mt-1">
                 <p className="text-xs text-slate-400 mb-0.5">Mensagem</p>

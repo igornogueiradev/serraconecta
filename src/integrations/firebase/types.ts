@@ -156,7 +156,29 @@ export interface QuestionarioResposta {
 // ──────────── LEADS ────────────
 
 export type LeadStatus = 'novo' | 'respondido' | 'agendado';
-export type LeadServico = 'transfer_aeroporto' | 'city_tour' | 'vinicola' | 'passeio' | 'outro';
+export type LeadServico = 'transfer' | 'transfer_city_tour' | 'transfer_aeroporto' | 'city_tour' | 'vinicola' | 'passeio' | 'outro';
+
+export interface LeadTransfer {
+  origem?: string;
+  destino?: string;
+  data?: string;
+  hora?: string;
+  ida_volta?: boolean;
+  data_volta?: string;
+  hora_volta?: string;
+}
+
+export interface LeadVoo {
+  companhia?: string;
+  numero?: string;
+  horario?: string;
+}
+
+export interface LeadCityTour {
+  roteiro?: string;
+  data?: string;
+  embarque?: string;
+}
 
 export interface Lead {
   id?: string;
@@ -166,6 +188,11 @@ export interface Lead {
   data_desejada?: string;
   destino?: string;
   servico?: LeadServico;
+  passageiros?: string;
+  transfer?: LeadTransfer;
+  voo_ida?: LeadVoo;
+  voo_volta?: LeadVoo;
+  city_tour?: LeadCityTour;
   mensagem?: string;
   status: LeadStatus;
   created_at: string;
