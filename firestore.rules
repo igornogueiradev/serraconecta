@@ -36,8 +36,10 @@ service cloud.firestore {
       allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
     }
 
+    // Agendamentos: quem tem o link (ID) abre um agendamento; listar, só o dono
     match /agendamentos/{docId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if request.auth != null && request.auth.uid == resource.data.user_id;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
       allow update: if (request.auth != null && request.auth.uid == resource.data.user_id)
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['questionario_respondido'])
@@ -47,9 +49,11 @@ service cloud.firestore {
       allow delete: if request.auth != null && request.auth.uid == resource.data.user_id;
     }
 
-    // Questionários de clientes: leitura e escrita públicas — acesso via link com ID de agendamento
+    // Questionários de clientes (contêm CPF): o ID do documento é o ID do agendamento,
+    // então só quem tem o link abre a resposta; listar, só o dono
     match /questionario_respostas/{docId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if request.auth != null && request.auth.uid == resource.data.owner_id;
       allow create, update: if true;
       allow delete: if false;
     }

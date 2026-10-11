@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Users2, Phone, CalendarDays, ChevronDown, CheckCircle2, Clock, Star } from 'lucide-react';
 import { useLeads } from '@/hooks/useLeads';
 import type { Lead, LeadStatus, LeadVoo } from '@/integrations/firebase/types';
+import { leadParaAgendamentos } from '@/utils/financeiro/agendamento';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -66,11 +67,8 @@ export default function LeadsPage() {
   }
 
   function converterEmAgendamento(lead: Lead) {
-    const state: Record<string, unknown> = {};
-    if (lead.data_desejada) state.data = lead.data_desejada;
-    if (lead.destino) state.destino = lead.destino;
-    if (lead.nome) state.clienteNome = lead.nome;
-    navigate('/financeiro/novo-agendamento', { state });
+    const [inicial, proximo] = leadParaAgendamentos(lead);
+    navigate('/financeiro/novo-agendamento', { state: { inicial, proximo } });
   }
 
   return (

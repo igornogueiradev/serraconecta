@@ -1,6 +1,6 @@
 import {
   collection, doc, addDoc, updateDoc, deleteDoc, getDoc,
-  getDocs, query, where, writeBatch,
+  getDocs, query, where, writeBatch, deleteField,
 } from 'firebase/firestore';
 import { db, auth } from './client';
 import type { Receita, Gasto, Agendamento } from './types';
@@ -119,6 +119,13 @@ export async function salvarAgendamento(
 
 export async function atualizarAgendamento(id: string, dados: Partial<Omit<Agendamento, 'id' | 'user_id'>>): Promise<void> {
   await updateDoc(doc(db, 'agendamentos', id), clean(dados as Record<string, unknown>));
+}
+
+export async function salvarEdicaoAgendamento(id: string, dados: Partial<Omit<Agendamento, 'id' | 'user_id'>>): Promise<void> {
+  const campos = Object.fromEntries(
+    Object.entries(dados).map(([k, v]) => [k, v === undefined ? deleteField() : clean(v)])
+  );
+  await updateDoc(doc(db, 'agendamentos', id), campos);
 }
 
 export async function deletarAgendamento(id: string): Promise<void> {

@@ -54,6 +54,19 @@ Webapp pessoal exclusivo de Igor (igor_flavio12@hotmail.com) para gestão de age
 - `meuexecutivogramado/script.js` — ao submeter o formulário de orçamento, salva lead no Firestore E abre WhatsApp
 - `meuexecutivogramado/index.html` — script carregado como módulo ES para permitir imports Firebase
 
+### Formulário do site por serviço (out/2026)
+- Site grava no lead: `servico` (`transfer` | `city_tour` | `transfer_city_tour`), `passageiros`, `adultos`, `criancas`, `transfer{}`, `voo_ida{}`, `voo_volta{}`, `city_tour{}`
+- `src/pages/LeadsPage.tsx` exibe esses dados; "Converter em Agendamento" usa `leadParaAgendamentos()` e, em Transfer + City Tour, oferece criar o passeio em seguida
+
+### Agendamento por categoria (out/2026)
+- Tipos no formulário: Transfer, Passeio / City Tour, Outro (Fretamento removido; registros antigos continuam abrindo)
+- `src/pages/financeiro/AgendamentoForm.tsx` — formulário único usado por NovoAgendamento e EditarAgendamento; campos mudam conforme o tipo
+- `src/utils/financeiro/agendamento.ts` — `layoutTipo()`, rótulos por tipo, `montarRota()`/`separarRota()`, conversão de lead
+- `destino` continua sendo o texto exibido (rota, roteiro ou descrição); `origem` guarda origem / embarque / local
+- Edição usa `salvarEdicaoAgendamento()` (apaga campos esvaziados com `deleteField`)
+- Questionário: CPF obrigatório (`src/utils/cpf.ts`); vem pré-preenchido com os dados do agendamento
+- `questionario_respostas`: ID do documento = ID do agendamento; regras permitem `get` público e `list` só do dono (idem `agendamentos`)
+
 ### Módulo Financeiro
 - Páginas: Dashboard, NovaReceita, EditarReceita, NovoGasto, EditarGasto, Historico, Relatorios, Agenda, NovoAgendamento, EditarAgendamento
 - `src/hooks/financeiro/` — hooks de receitas, gastos e agendamentos

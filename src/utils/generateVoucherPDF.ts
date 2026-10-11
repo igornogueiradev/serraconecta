@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { Agendamento, UserProfile, QuestionarioResposta } from '@/integrations/firebase/types';
 import { LABEL_TIPO_AGENDAMENTO } from '@/utils/financeiro/formatters';
+import { isTransfer, labelRota, labelOrigem } from '@/utils/financeiro/agendamento';
 
 const VERDE = [112, 136, 95] as const;
 const AZUL  = [19, 50, 74]  as const;
@@ -41,6 +42,14 @@ function estimateLines(text: string, maxWidth: number, charsPerMm = 0.55): numbe
   return Math.max(1, Math.ceil(text.length / charsPerLine));
 }
 
+function horaComTermino(a: Agendamento) {
+  return a.hora_fim ? `${a.hora} às ${a.hora_fim}` : a.hora;
+}
+
+function mostraOrigem(a: Agendamento) {
+  return !!a.origem && !isTransfer(a.tipo);
+}
+
 function calcDocHeight(
   agendamento: Agendamento,
   resposta?: QuestionarioResposta | null,
@@ -67,8 +76,9 @@ function calcDocHeight(
     if (agendamento.destino_volta) rows.push(['Rota volta', agendamento.destino_volta]);
   } else {
     rows.push(['Data', formatDate(agendamento.data)]);
-    rows.push(['Hora', agendamento.hora]);
-    if (agendamento.destino) rows.push(['Rota', agendamento.destino]);
+    rows.push(['Hora', horaComTermino(agendamento)]);
+    if (agendamento.destino) rows.push([labelRota(agendamento.tipo), agendamento.destino]);
+    if (mostraOrigem(agendamento)) rows.push([labelOrigem(agendamento.tipo), agendamento.origem!]);
   }
 
   if (agendamento.observacao) rows.push(['Obs.', agendamento.observacao]);
@@ -214,8 +224,9 @@ export async function generateVoucherPDF(
     if (agendamento.destino_volta) drawRow('Rota', agendamento.destino_volta);
   } else {
     drawRow('Data', formatDate(agendamento.data));
-    drawRow('Hora', agendamento.hora);
-    if (agendamento.destino) drawRow('Rota', agendamento.destino);
+    drawRow('Hora', horaComTermino(agendamento));
+    if (agendamento.destino) drawRow(labelRota(agendamento.tipo), agendamento.destino);
+    if (mostraOrigem(agendamento)) drawRow(labelOrigem(agendamento.tipo), agendamento.origem!);
   }
 
   if (agendamento.observacao) drawRow('Obs.', agendamento.observacao);

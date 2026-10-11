@@ -8,14 +8,12 @@ import {
 import { generateVoucherPDF } from '@/utils/generateVoucherPDF';
 import { LABEL_TIPO_AGENDAMENTO } from '@/utils/financeiro/formatters';
 import type { Agendamento, QuestionarioResposta } from '@/integrations/firebase/types';
+import { isTransfer, labelRota, labelOrigem } from '@/utils/financeiro/agendamento';
+import { formatarCPF, validarCPF, mascararCPF } from '@/utils/cpf';
 import { FileDown, Lock, CheckCircle2 } from 'lucide-react';
 
-function isTransfer(tipo: string) {
-  return tipo === 'transfer' || tipo === 'transfer_poa' || tipo === 'transfer_caxias';
-}
-
 const VAZIO = {
-  nome: '', telefone: '', ponto_embarque: '', num_voo: '',
+  nome: '', telefone: '', cpf: '', ponto_embarque: '', num_voo: '',
   hotel: '', num_voo_ida: '', num_voo_volta: '',
   adultos: 1, criancas: 0, cadeirinha: 0, elevacao: 0,
   bagagens_23kg: 0, bagagens_10kg: 0, bolsas: 0,
@@ -78,12 +76,21 @@ function MiniVoucher({ agendamento }: { agendamento: Agendamento }) {
           <>
             <div className="flex justify-between">
               <span className="opacity-60">Data</span>
-              <span className="font-medium">{formatDate(agendamento.data)} às {agendamento.hora}</span>
+              <span className="font-medium">
+                {formatDate(agendamento.data)} às {agendamento.hora}
+                {agendamento.hora_fim ? ` – ${agendamento.hora_fim}` : ''}
+              </span>
             </div>
             {agendamento.destino && (
               <div className="flex justify-between gap-4">
-                <span className="opacity-60 shrink-0">Rota</span>
+                <span className="opacity-60 shrink-0">{labelRota(agendamento.tipo)}</span>
                 <span className="font-medium text-right">{agendamento.destino}</span>
+              </div>
+            )}
+            {agendamento.origem && !isTransfer(agendamento.tipo) && (
+              <div className="flex justify-between gap-4">
+                <span className="opacity-60 shrink-0">{labelOrigem(agendamento.tipo)}</span>
+                <span className="font-medium text-right">{agendamento.origem}</span>
               </div>
             )}
           </>
@@ -125,6 +132,7 @@ export default function QuestionarioCliente() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [expirado, setExpirado] = useState(false);
+  const [erro, setErro] = useState('');
   const [form, setForm] = useState<FormState>(VAZIO);
 
   useEffect(() => {
@@ -147,6 +155,7 @@ export default function QuestionarioCliente() {
         setForm({
           nome: resp.nome ?? '',
           telefone: resp.telefone ?? '',
+          cpf: resp.cpf ?? '',
           ponto_embarque: resp.ponto_embarque ?? '',
           num_voo: resp.num_voo ?? '',
           hotel: resp.hotel ?? '',
@@ -166,6 +175,21 @@ export default function QuestionarioCliente() {
           mobilidade_reduzida_desc: resp.mobilidade_reduzida_desc ?? '',
           observacoes: resp.observacoes ?? '',
         });
+      } else {
+        const a = ag as Agendamento;
+        const transfer = isTransfer(a.tipo);
+        setForm({
+          ...VAZIO,
+          nome: a.clienteNome ?? '',
+          telefone: a.clienteTelefone ?? '',
+          ponto_embarque: a.origem ?? '',
+          num_voo: a.voo_ida?.numero ?? '',
+          num_voo_ida: a.voo_ida?.numero ?? '',
+          num_voo_volta: a.voo_volta?.numero ?? '',
+          adultos: a.adultos ?? 1,
+          criancas: a.criancas ?? 0,
+          roteiro: !transfer ? (a.destino ?? '') : '',
+        });
       }
       setIsLoading(false);
     }
@@ -179,12 +203,19 @@ export default function QuestionarioCliente() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!id || !agendamento) return;
+    setErro('');
+    if (!validarCPF(form.cpf)) { setErro('Informe um CPF válido.'); return; }
     setIsSaving(true);
     const dados = { agendamento_id: id, owner_id: agendamento.user_id, ...form };
-    await salvarResposta(id, dados);
-    setResposta({ ...dados });
-    setIsSaving(false);
-    setEnviado(true);
+    try {
+      await salvarResposta(id, dados);
+      setResposta({ ...dados });
+      setEnviado(true);
+    } catch {
+      setErro('Não foi possível enviar. Tente novamente.');
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function handleDownload(ag: Agendamento, resp: QuestionarioResposta | null) {
@@ -239,6 +270,7 @@ export default function QuestionarioCliente() {
             <div className="flex flex-col gap-2 text-sm text-slate-600">
               {resposta?.nome && <Row label="Nome" value={resposta.nome} />}
               {resposta?.telefone && <Row label="Telefone" value={resposta.telefone} />}
+              {resposta?.cpf && <Row label="CPF" value={mascararCPF(resposta.cpf)} />}
               {agendamento.ida_e_volta ? (
                 <>
                   {resposta?.hotel && <Row label="Hotel" value={resposta.hotel} />}
@@ -318,6 +350,12 @@ export default function QuestionarioCliente() {
             <label className="block text-xs text-slate-500 mb-1">Telefone / WhatsApp *</label>
             <input required type="tel" value={form.telefone} onChange={e => set('telefone', e.target.value)}
               placeholder="(00) 00000-0000" className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">CPF *</label>
+            <input required inputMode="numeric" value={form.cpf}
+              onChange={e => set('cpf', formatarCPF(e.target.value))}
+              placeholder="000.000.000-00" className={inputCls} />
           </div>
           {transfer && agendamento.ida_e_volta ? (
             <>
@@ -465,6 +503,8 @@ export default function QuestionarioCliente() {
               placeholder="Alguma observação especial?"
               className={`${inputCls} resize-none`} />
           </div>
+
+          {erro && <p className="text-red-600 text-sm text-center">{erro}</p>}
 
           <button type="submit" disabled={isSaving}
             style={{ background: '#13324a' }} className={btnAzul}>

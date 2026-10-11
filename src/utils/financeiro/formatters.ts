@@ -86,7 +86,7 @@ export const LABEL_TIPO_AGENDAMENTO: Record<string, string> = {
   transfer: 'Transfer',
   transfer_poa: 'Transfer',
   transfer_caxias: 'Transfer',
-  passeio: 'Passeio / Tour',
+  passeio: 'Passeio / City Tour',
   fretamento: 'Fretamento',
   outro: 'Outro',
 };

@@ -203,7 +203,7 @@ export const HELP_CONTENT: Record<HelpPageKey, HelpContent> = {
   'financeiro-agenda': {
     title: 'Agenda de Serviços',
     description:
-      'Organize seus compromissos e serviços agendados: transfers, passeios, city tours, fretamentos e outros atendimentos.',
+      'Organize seus compromissos e serviços agendados: transfers, passeios, city tours e outros atendimentos.',
     benefit:
       'Nunca mais esqueça um serviço agendado. Veja tudo que está por vir e gerencie confirmações em um só lugar.',
     steps: [

@@ -7,6 +7,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { atualizarAgendamento, deletarAgendamento } from '@/integrations/firebase/financeiro';
 import { getRespostaPorAgendamento } from '@/integrations/firebase/questionario';
 import { formatarMoeda, formatarData, LABEL_TIPO_AGENDAMENTO, LABEL_STATUS, COR_STATUS } from '@/utils/financeiro/formatters';
+import { isTransfer, labelRota, labelOrigem, formatarPassageiros, formatarVoo } from '@/utils/financeiro/agendamento';
 import { generateVoucherPDF } from '@/utils/generateVoucherPDF';
 import { generateQuestionarioWhatsApp } from '@/utils/whatsapp';
 import { format, isToday, isTomorrow, startOfDay } from 'date-fns';
@@ -309,11 +310,18 @@ function CardAgendamento({
             ) : (
               displayDestino && (
                 <div className="flex justify-between gap-2">
-                  <span className="text-slate-400">Rota</span>
+                  <span className="text-slate-400">{labelRota(a.tipo)}</span>
                   <span className="text-right">{displayDestino}</span>
                 </div>
               )
             )}
+
+            {a.origem && !isTransfer(a.tipo) && <Row label={labelOrigem(a.tipo)} value={a.origem} />}
+            {a.hora_fim && <Row label="Término previsto" value={a.hora_fim} />}
+            {a.clienteTelefone && <Row label="Telefone" value={a.clienteTelefone} />}
+            {(a.adultos || a.criancas) && <Row label="Passageiros" value={formatarPassageiros(a.adultos, a.criancas)} />}
+            {a.voo_ida && <Row label={a.ida_e_volta ? 'Voo de ida' : 'Voo'} value={formatarVoo(a.voo_ida)} />}
+            {a.voo_volta && <Row label="Voo de volta" value={formatarVoo(a.voo_volta)} />}
 
             {a.valorCombinado && (
               <div className="flex justify-between">
@@ -345,6 +353,7 @@ function CardAgendamento({
               </p>
               <Row label="Nome" value={resposta.nome} />
               <Row label="Telefone" value={resposta.telefone} />
+              {resposta.cpf && <Row label="CPF" value={resposta.cpf} />}
               {a.ida_e_volta ? (
                 <>
                   {resposta.hotel && <Row label="Hotel" value={resposta.hotel} />}

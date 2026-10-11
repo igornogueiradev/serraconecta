@@ -117,6 +117,13 @@ export interface Agendamento {
   hora_volta?: string;
   destino_volta?: string;
   direcao?: 'in' | 'out';
+  clienteTelefone?: string;
+  origem?: string;
+  hora_fim?: string;
+  adultos?: number;
+  criancas?: number;
+  voo_ida?: LeadVoo;
+  voo_volta?: LeadVoo;
   status: StatusAgendamento;
   observacao?: string;
   questionario_enviado?: boolean;
@@ -131,6 +138,7 @@ export interface QuestionarioResposta {
   owner_id: string;
   nome: string;
   telefone: string;
+  cpf?: string;
   ponto_embarque?: string;
   num_voo?: string;
   hotel?: string;
@@ -189,6 +197,9 @@ export interface Lead {
   destino?: string;
   servico?: LeadServico;
   passageiros?: string;
+  adultos?: number;
+  criancas?: number;
+  idades_criancas?: string;
   transfer?: LeadTransfer;
   voo_ida?: LeadVoo;
   voo_volta?: LeadVoo;
