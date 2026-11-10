@@ -29,7 +29,8 @@ function labelData(dataStr: string): string {
   const d = new Date(dataStr + 'T12:00:00');
   if (isToday(d)) return 'Hoje';
   if (isTomorrow(d)) return 'Amanhã';
-  return format(d, "EEEE, dd 'de' MMMM", { locale: ptBR });
+  const outroAno = d.getFullYear() !== new Date().getFullYear();
+  return format(d, outroAno ? "EEEE, dd 'de' MMMM 'de' yyyy" : "EEEE, dd 'de' MMMM", { locale: ptBR });
 }
 
 function buildItems(agendamentos: Agendamento[], hoje: Date, onlyFuture: boolean): CardItem[] {
