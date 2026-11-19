@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Pencil, Trash2, ChevronDown, CheckCircle2, XCircle, CalendarDays, FileDown, Send, ClipboardList, Unlock, Users } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, ChevronDown, CheckCircle2, XCircle, CalendarDays, FileDown, Send, ClipboardList, Unlock, Users, MessageCircle } from 'lucide-react';
 import { FinanceiroLayout } from './FinanceiroLayout';
 import { useAgendamentos } from '@/hooks/financeiro/useAgendamentos';
 import { useUserProfile } from '@/hooks/useUserProfile';
@@ -11,7 +11,7 @@ import { isTransfer, labelRota, labelOrigem, formatarPassageiros, formatarVoo, f
 import { useMotoristas } from '@/hooks/useMotoristas';
 import { sincronizarAgendasMotoristas } from '@/integrations/firebase/motoristas';
 import { generateVoucherPDF } from '@/utils/generateVoucherPDF';
-import { generateQuestionarioWhatsApp } from '@/utils/whatsapp';
+import { generateQuestionarioWhatsApp, linkWhatsApp, mensagemConfirmacao } from '@/utils/whatsapp';
 import { format, isToday, isTomorrow, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import type { Agendamento, QuestionarioResposta, StatusAgendamento } from '@/integrations/firebase/types';
@@ -82,6 +82,7 @@ export default function Agenda() {
   const [mostrarPassados, setMostrarPassados] = useState(false);
 
   const hoje = startOfDay(new Date());
+  const assinatura = `${profile?.full_name?.split(' ')[0] || 'Igor'}, ${profile?.agency_name || 'Meu Executivo Gramado'}`;
 
   useEffect(() => {
     if (isLoading) return;
@@ -163,6 +164,7 @@ export default function Agenda() {
         displayHora={displayHora}
         displayDestino={displayDestino}
         motoristaNome={nomesEquipe(motoristasDoTrecho(a, leg === 'volta'))}
+        assinatura={assinatura}
         nomesEquipe={nomesEquipe}
         expandido={expandidoKey === cardKey}
         confirmando={confirmandoId === a.id && leg !== 'volta'}
@@ -260,6 +262,7 @@ interface CardProps {
   displayHora: string;
   displayDestino: string | undefined;
   motoristaNome?: string;
+  assinatura: string;
   nomesEquipe: (ids: string[]) => string | undefined;
   expandido: boolean;
   confirmando: boolean;
@@ -277,7 +280,7 @@ interface CardProps {
 }
 
 function CardAgendamento({
-  agendamento: a, leg, displayData, displayHora, displayDestino, motoristaNome, nomesEquipe,
+  agendamento: a, leg, displayData, displayHora, displayDestino, motoristaNome, assinatura, nomesEquipe,
   expandido, confirmando,
   onToggle, onEditar, onConcluir, onCancelar, onConfirmar,
   onExcluir, onConfirmarDelete, onCancelarDelete, onVoucher, onQuestionario, onPermitirEdicao,
@@ -290,6 +293,13 @@ function CardAgendamento({
       getRespostaPorAgendamento(a.id!).then(setResposta);
     }
   }, [expandido, a.questionario_respondido]);
+
+  const aguardandoResposta = !!a.questionario_respondido && !resposta;
+
+  function confirmarComCliente() {
+    const telefone = resposta?.telefone || a.clienteTelefone;
+    window.open(linkWhatsApp(telefone, mensagemConfirmacao(a, leg, resposta, assinatura)), '_blank');
+  }
 
   const direcaoEfetiva = leg === 'ida' ? 'in' : leg === 'volta' ? 'out' : a.direcao;
 
@@ -444,12 +454,18 @@ function CardAgendamento({
 
           {!confirmando ? (
             <div className="mt-2 flex flex-wrap gap-2">
+              {ativo && (
+                <button onClick={confirmarComCliente} disabled={aguardandoResposta}
+                  className="flex items-center gap-1 text-xs text-green-700 hover:text-green-900 py-1 font-medium disabled:opacity-50">
+                  <MessageCircle size={14} /> Confirmar com cliente
+                </button>
+              )}
               {ativo && leg !== 'volta' && (
                 <>
                   {a.status === 'agendado' && (
                     <button onClick={onConfirmar}
                       className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800 py-1">
-                      <CheckCircle2 size={14} /> Confirmar
+                      <CheckCircle2 size={14} /> Marcar confirmado
                     </button>
                   )}
                   <button onClick={onConcluir}

@@ -1,3 +1,8 @@
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { formatarPassageiros, formatarRota, layoutTipo } from '@/utils/financeiro/agendamento';
+import type { Agendamento, QuestionarioResposta } from '@/integrations/firebase/types';
+
 export function generateWhatsAppLink(
   phoneNumber: string,
   type: 'driver' | 'trip',
@@ -186,4 +191,67 @@ export function formatPhoneNumber(phone: string): string {
   }
   
   return phone;
+}
+export function mensagemConfirmacao(
+  a: Agendamento,
+  leg: 'ida' | 'volta' | undefined,
+  r: QuestionarioResposta | null,
+  assinatura: string,
+): string {
+  const volta = leg === 'volta';
+  const data = volta ? a.data_volta! : a.data;
+  const hora = volta ? a.hora_volta : a.hora;
+  const d = new Date(`${data}T12:00:00`);
+  const outroAno = d.getFullYear() !== new Date().getFullYear();
+  const dia = format(d, outroAno ? 'EEEE, dd/MM/yyyy' : 'EEEE, dd/MM', { locale: ptBR });
+  const horario = hora && a.hora_fim && !volta ? ` das ${hora} às ${a.hora_fim}` : hora ? ` às ${hora}` : '';
+  const quando = `${dia.charAt(0).toUpperCase()}${dia.slice(1)}${horario}`;
+
+  const primeiroNome = (r?.nome || a.clienteNome)?.split(' ')[0];
+  const passageiros = r ? formatarPassageiros(r.adultos, r.criancas) : formatarPassageiros(a.adultos, a.criancas);
+  const layout = layoutTipo(a.tipo);
+
+  const linhas: string[] = [`📅 ${quando}`];
+  let servico: string;
+  let fecho: string;
+
+  if (layout === 'transfer') {
+    servico = volta ? 'seu transfer de volta' : a.ida_e_volta ? 'seu transfer de chegada' : 'seu transfer';
+    const rota = formatarRota(volta ? a.destino_volta : a.destino);
+    if (rota) linhas.push(`📍 ${rota}`);
+    const voo = volta ? a.voo_volta : a.voo_ida;
+    const numeroCliente = r ? (a.ida_e_volta ? (volta ? r.num_voo_volta : r.num_voo_ida) : r.num_voo) : undefined;
+    const numero = numeroCliente || voo?.numero;
+    const ident = [voo?.companhia, numero].filter(Boolean).join(' ');
+    if (ident || voo?.horario) {
+      const chegada = leg === 'ida' || (!leg && a.direcao === 'in');
+      const partida = volta || (!leg && a.direcao === 'out');
+      const rotulo = chegada ? 'chegada' : partida ? 'partida' : 'horário';
+      linhas.push(`✈️ Voo ${[ident, voo?.horario ? `${rotulo} ${voo.horario}` : ''].filter(Boolean).join(', ')}`);
+    }
+    fecho = 'Está tudo certo? Se houve alguma alteração no voo ou no horário, me avise por aqui.';
+  } else if (layout === 'passeio') {
+    servico = 'seu passeio';
+    if (a.destino) linhas.push(`🗺️ ${a.destino}`);
+    const embarque = r?.ponto_embarque || r?.hotel || a.origem;
+    if (embarque) linhas.push(`📍 Embarque: ${embarque}`);
+    fecho = 'Está tudo certo? Se precisar alterar algum detalhe, como horário ou local de embarque, me avise por aqui.';
+  } else {
+    servico = 'nosso serviço';
+    if (a.destino) linhas.push(`📝 ${a.destino}`);
+    const local = r?.ponto_embarque || a.origem;
+    if (local) linhas.push(`📍 ${local}`);
+    fecho = 'Está tudo certo? Se precisar alterar algum detalhe, me avise por aqui.';
+  }
+  if (passageiros) linhas.push(`👥 ${passageiros}`);
+
+  return [
+    `${primeiroNome ? `Olá, ${primeiroNome}!` : 'Olá!'} Tudo bem? 😊`,
+    `Passando para confirmar ${servico}:`,
+    '',
+    ...linhas,
+    '',
+    fecho,
+    assinatura,
+  ].join('\n');
 }
