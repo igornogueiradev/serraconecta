@@ -72,6 +72,7 @@ Webapp pessoal exclusivo de Igor (igor_flavio12@hotmail.com) para gestão de age
 - Agendamento: `motoristas_ida[]` e `motoristas_volta[]` (um por carro; `"eu"` = o próprio Igor; vazio = só o Igor). Campos antigos `motorista_id`/`motorista_volta_id` são lidos por `motoristasDoTrecho()` e convertidos ao editar
 - Agenda: filtro Todos / Eu / cada motorista, por trecho
 - `agenda_motorista/{token}`: cópia sem valores dos serviços de hoje em diante, refeita por `sincronizarAgendasMotoristas()` sempre que a Agenda carrega; página pública `/m/:token` (`src/pages/MotoristaAgenda.tsx`)
+- Agenda: botão "Confirmar com cliente" por trecho — WhatsApp com `mensagemConfirmacao()` (`src/utils/whatsapp.ts`), texto por tipo; usa dados do questionário se houver
 - Volta com `origem_volta` + `destino_volta` (rota montada); `formatarRota()` troca ">" antigos por "→"
 
 ### Módulo Financeiro
