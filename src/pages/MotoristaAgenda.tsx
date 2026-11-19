@@ -41,6 +41,9 @@ function CardServico({ s }: { s: ServicoMotorista }) {
           </span>
         )}
       </div>
+      {s.equipe && (
+        <p className="text-xs font-medium text-indigo-700 bg-indigo-50 rounded-lg px-2 py-1 mb-1">🚗 {s.equipe}</p>
+      )}
       <Linha label="Rota" valor={s.rota} />
       <Linha label="Embarque" valor={s.embarque} />
       <Linha label="Hotel" valor={s.hotel} />

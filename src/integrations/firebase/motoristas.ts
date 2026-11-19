@@ -1,11 +1,11 @@
 import { db, auth } from './client';
 import {
-  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, where, deleteField, writeBatch,
+  collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, query, where, deleteField, writeBatch, arrayRemove,
 } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { getRespostaPorAgendamento } from './questionario';
 import { LABEL_TIPO_AGENDAMENTO } from '@/utils/financeiro/formatters';
-import { formatarPassageiros, formatarRota, formatarVoo, isTransfer } from '@/utils/financeiro/agendamento';
+import { EU, formatarPassageiros, formatarRota, formatarVoo, isTransfer, motoristasDoTrecho } from '@/utils/financeiro/agendamento';
 import type { Agendamento, AgendaMotorista, Motorista, QuestionarioResposta, ServicoMotorista } from './types';
 
 function uid(): string {
@@ -70,6 +70,14 @@ export async function excluirMotorista(motorista: Motorista) {
     ));
     snap.docs.forEach(d => batch.update(d.ref, { [campo]: deleteField() }));
   }
+  for (const campo of ['motoristas_ida', 'motoristas_volta']) {
+    const snap = await getDocs(query(
+      collection(db, 'agendamentos'),
+      where('user_id', '==', userId),
+      where(campo, 'array-contains', motorista.id),
+    ));
+    snap.docs.forEach(d => batch.update(d.ref, { [campo]: arrayRemove(motorista.id) }));
+  }
   batch.delete(doc(db, 'motoristas', motorista.id!));
   await batch.commit();
   await apagarAgendaPublica(motorista.token);
@@ -83,7 +91,7 @@ export async function getAgendaMotorista(token: string): Promise<AgendaMotorista
 interface Trecho {
   agendamento: Agendamento;
   leg?: 'ida' | 'volta';
-  motoristaId?: string;
+  motoristaIds: string[];
   data: string;
   hora: string;
 }
@@ -92,7 +100,11 @@ function semVazios<T extends object>(obj: T): T {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined && v !== '')) as T;
 }
 
-function servicoParaMotorista(t: Trecho, r: QuestionarioResposta | null | undefined): ServicoMotorista {
+function juntarNomes(nomes: string[]) {
+  return nomes.length > 1 ? `${nomes.slice(0, -1).join(', ')} e ${nomes[nomes.length - 1]}` : nomes[0];
+}
+
+function servicoParaMotorista(t: Trecho, r: QuestionarioResposta | null | undefined, equipe?: string): ServicoMotorista {
   const a = t.agendamento;
   const volta = t.leg === 'volta';
   const vooAgendamento = volta ? a.voo_volta : a.voo_ida;
@@ -121,6 +133,7 @@ function servicoParaMotorista(t: Trecho, r: QuestionarioResposta | null | undefi
     hora_fim: a.hora_fim,
     tipo: LABEL_TIPO_AGENDAMENTO[a.tipo] ?? a.tipo,
     trecho,
+    equipe,
     rota: formatarRota(volta ? a.destino_volta : a.destino),
     embarque: r?.ponto_embarque || (!isTransfer(a.tipo) ? a.origem : undefined),
     hotel: r?.hotel,
@@ -144,17 +157,17 @@ export async function sincronizarAgendasMotoristas(agendamentos: Agendamento[]) 
   for (const a of agendamentos) {
     if (a.status !== 'agendado' && a.status !== 'confirmado') continue;
     if (a.ida_e_volta) {
-      trechos.push({ agendamento: a, leg: 'ida', motoristaId: a.motorista_id, data: a.data, hora: a.hora });
+      trechos.push({ agendamento: a, leg: 'ida', motoristaIds: motoristasDoTrecho(a), data: a.data, hora: a.hora });
       if (a.data_volta) {
-        trechos.push({ agendamento: a, leg: 'volta', motoristaId: a.motorista_volta_id, data: a.data_volta, hora: a.hora_volta ?? '' });
+        trechos.push({ agendamento: a, leg: 'volta', motoristaIds: motoristasDoTrecho(a, true), data: a.data_volta, hora: a.hora_volta ?? '' });
       }
     } else {
-      trechos.push({ agendamento: a, motoristaId: a.motorista_id, data: a.data, hora: a.hora });
+      trechos.push({ agendamento: a, motoristaIds: motoristasDoTrecho(a), data: a.data, hora: a.hora });
     }
   }
 
-  const ids = new Set(motoristas.map(m => m.id));
-  const relevantes = trechos.filter(t => t.motoristaId && ids.has(t.motoristaId) && t.data >= hoje);
+  const nomes = new Map(motoristas.map(m => [m.id!, m.nome]));
+  const relevantes = trechos.filter(t => t.data >= hoje && t.motoristaIds.some(id => nomes.has(id)));
 
   const respostas = new Map<string, QuestionarioResposta | null>();
   const respondidos = [...new Set(relevantes.filter(t => t.agendamento.questionario_respondido).map(t => t.agendamento.id!))];
@@ -162,11 +175,20 @@ export async function sincronizarAgendasMotoristas(agendamentos: Agendamento[]) 
 
   const userId = uid();
   const agora = new Date().toISOString();
+  const perfil = await getDoc(doc(db, 'users', userId));
+  const nomeDono = (perfil.data()?.full_name as string | undefined)?.split(' ')[0] || 'Igor';
+
+  function equipePara(t: Trecho, motoristaId: string) {
+    const validos = t.motoristaIds.filter(id => id === EU || nomes.has(id));
+    if (validos.length < 2) return undefined;
+    const outros = validos.filter(id => id !== motoristaId).map(id => id === EU ? nomeDono : nomes.get(id)!);
+    return `${validos.length} carros: ${juntarNomes(['você', ...outros])}`;
+  }
   await Promise.all(motoristas.map(m => {
     const servicos = relevantes
-      .filter(t => t.motoristaId === m.id)
+      .filter(t => t.motoristaIds.includes(m.id!))
       .sort((x, y) => (x.data + x.hora).localeCompare(y.data + y.hora))
-      .map(t => servicoParaMotorista(t, respostas.get(t.agendamento.id!)));
+      .map(t => servicoParaMotorista(t, respostas.get(t.agendamento.id!), equipePara(t, m.id!)));
     const agenda: AgendaMotorista = { user_id: userId, motorista_nome: m.nome, atualizado_em: agora, servicos };
     return setDoc(doc(db, 'agenda_motorista', m.token), agenda);
   }));

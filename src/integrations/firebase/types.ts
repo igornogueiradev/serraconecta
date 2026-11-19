@@ -127,6 +127,8 @@ export interface Agendamento {
   origem_volta?: string;
   motorista_id?: string;
   motorista_volta_id?: string;
+  motoristas_ida?: string[];
+  motoristas_volta?: string[];
   status: StatusAgendamento;
   observacao?: string;
   questionario_enviado?: boolean;
@@ -150,6 +152,7 @@ export interface ServicoMotorista {
   hora_fim?: string;
   tipo: string;
   trecho?: 'IN' | 'OUT';
+  equipe?: string;
   rota?: string;
   embarque?: string;
   hotel?: string;

@@ -29,6 +29,15 @@ export function montarRota(origem?: string, destino?: string) {
   return [origem, destino].map(s => s?.trim()).filter(Boolean).join(' → ');
 }
 
+export const EU = 'eu';
+
+export function motoristasDoTrecho(a: Partial<Agendamento>, volta = false): string[] {
+  const lista = volta
+    ? a.motoristas_volta ?? (a.motorista_volta_id ? [a.motorista_volta_id] : [])
+    : a.motoristas_ida ?? (a.motorista_id ? [a.motorista_id] : []);
+  return lista.length ? lista : [EU];
+}
+
 export function formatarRota(rota?: string) {
   return rota?.replace(/\s*(?:->|>)\s*/g, ' → ');
 }

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useMotoristas } from '@/hooks/useMotoristas';
 import { LABEL_TIPO_AGENDAMENTO, LABEL_STATUS } from '@/utils/financeiro/formatters';
-import { TIPOS_AGENDAMENTO, ROTEIROS, layoutTipo, montarRota, separarRota } from '@/utils/financeiro/agendamento';
+import { TIPOS_AGENDAMENTO, ROTEIROS, EU, layoutTipo, montarRota, separarRota, motoristasDoTrecho } from '@/utils/financeiro/agendamento';
 import type { Agendamento, LeadVoo, StatusAgendamento, TipoAgendamento } from '@/integrations/firebase/types';
 
 export type DadosAgendamento = Omit<Agendamento,
@@ -69,8 +69,8 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
   const [origemVoltaInicial, destinoVoltaInicial] = separarRota(inicial.destino_volta, inicial.origem_volta);
   const [origemVolta, setOrigemVolta] = useState(origemVoltaInicial);
   const [destinoVolta, setDestinoVolta] = useState(destinoVoltaInicial);
-  const [motoristaIda, setMotoristaIda] = useState(inicial.motorista_id ?? '');
-  const [motoristaVolta, setMotoristaVolta] = useState(inicial.motorista_volta_id ?? '');
+  const [motoristasIda, setMotoristasIda] = useState<string[]>(motoristasDoTrecho(inicial));
+  const [motoristasVolta, setMotoristasVolta] = useState<string[]>(motoristasDoTrecho(inicial, true));
   const { motoristas } = useMotoristas();
   const [vooIda, setVooIda] = useState({ ...VOO_VAZIO, ...inicial.voo_ida });
   const [vooVolta, setVooVolta] = useState({ ...VOO_VAZIO, ...inicial.voo_volta });
@@ -84,6 +84,8 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
   const tipos = TIPOS_AGENDAMENTO.includes(tipoInicial) ? TIPOS_AGENDAMENTO : [...TIPOS_AGENDAMENTO, tipoInicial];
   const rotaVoltaPadrao = montarRota(destino, origem);
 
+  const soEu = (lista: string[]) => lista.length === 1 && lista[0] === EU;
+
   function marcarIdaEVolta(marcado: boolean) {
     setIdaEVolta(marcado);
     if (!marcado) return;
@@ -91,16 +93,28 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
       setOrigemVolta(destino);
       setDestinoVolta(origem);
     }
-    if (!motoristaVolta) setMotoristaVolta(motoristaIda);
+    if (soEu(motoristasVolta)) setMotoristasVolta(motoristasIda);
   }
 
-  function campoMotorista(label: string, valor: string, onChange: (v: string) => void) {
+  function campoMotorista(label: string, valor: string[], onChange: (v: string[]) => void) {
+    const opcoes = [{ id: EU, nome: 'Eu' }, ...motoristas.map(m => ({ id: m.id!, nome: m.nome }))];
+    function alternar(id: string) {
+      const nova = valor.includes(id) ? valor.filter(v => v !== id) : [...valor, id];
+      onChange(nova.length ? nova : [EU]);
+    }
     return (
       <Campo label={label}>
-        <select value={valor} onChange={e => onChange(e.target.value)} className={inputCls}>
-          <option value="">Eu mesmo</option>
-          {motoristas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-        </select>
+        <div className="flex flex-wrap gap-2">
+          {opcoes.map(o => (
+            <button key={o.id} type="button" onClick={() => alternar(o.id)}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                valor.includes(o.id) ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-200 text-slate-600 bg-white'
+              }`}>
+              {o.nome}
+            </button>
+          ))}
+        </div>
+        {motoristas.length > 0 && <p className="text-xs text-slate-400">Marque um motorista por carro.</p>}
         {motoristas.length === 0 && (
           <Link to="/financeiro/motoristas" className="text-xs text-blue-600 hover:underline">
             Cadastrar motoristas
@@ -142,8 +156,10 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
       hora_volta: voltar ? horaVolta : undefined,
       origem_volta: voltar ? (origemVolta.trim() || undefined) : undefined,
       destino_volta: voltar ? (montarRota(origemVolta, destinoVolta) || rotaVoltaPadrao || undefined) : undefined,
-      motorista_id: motoristaIda || undefined,
-      motorista_volta_id: voltar ? (motoristaVolta || undefined) : undefined,
+      motorista_id: undefined,
+      motorista_volta_id: undefined,
+      motoristas_ida: soEu(motoristasIda) ? undefined : motoristasIda,
+      motoristas_volta: voltar && !soEu(motoristasVolta) ? motoristasVolta : undefined,
       voo_ida: transfer ? vooParaDados(vooIda) : undefined,
       voo_volta: voltar ? vooParaDados(vooVolta) : undefined,
       valorCombinado: valorCombinado ? parseFloat(valorCombinado) : undefined,
@@ -236,7 +252,7 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
               </Campo>
             </div>
             {camposVoo(vooIda, setVooIda, idaEVolta ? 'Voo de ida (opcional)' : 'Voo (opcional)')}
-            {campoMotorista(idaEVolta ? 'Motorista da ida' : 'Motorista', motoristaIda, setMotoristaIda)}
+            {campoMotorista(idaEVolta ? 'Motoristas da ida' : 'Motoristas', motoristasIda, setMotoristasIda)}
           </div>
 
           <div className="bg-white rounded-2xl p-4 shadow-sm">
@@ -269,7 +285,7 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
                   onChange={e => setDestinoVolta(e.target.value)} className={inputCls} />
               </Campo>
               {camposVoo(vooVolta, setVooVolta, 'Voo de volta (opcional)')}
-              {campoMotorista('Motorista da volta', motoristaVolta, setMotoristaVolta)}
+              {campoMotorista('Motoristas da volta', motoristasVolta, setMotoristasVolta)}
             </div>
           ) : (
             <div className="bg-white rounded-2xl p-4 shadow-sm flex flex-col gap-2">
@@ -328,7 +344,7 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
               <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} className={inputCls} />
             </Campo>
           </div>
-          {campoMotorista('Motorista', motoristaIda, setMotoristaIda)}
+          {campoMotorista('Motoristas', motoristasIda, setMotoristasIda)}
         </div>
       )}
 
@@ -353,7 +369,7 @@ export function AgendamentoForm({ inicial = {}, comStatus, textoBotao, icone, on
               <input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} className={inputCls} />
             </Campo>
           </div>
-          {campoMotorista('Motorista', motoristaIda, setMotoristaIda)}
+          {campoMotorista('Motoristas', motoristasIda, setMotoristasIda)}
         </div>
       )}
 

@@ -7,7 +7,7 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { atualizarAgendamento, deletarAgendamento } from '@/integrations/firebase/financeiro';
 import { getRespostaPorAgendamento } from '@/integrations/firebase/questionario';
 import { formatarMoeda, formatarData, LABEL_TIPO_AGENDAMENTO, LABEL_STATUS, COR_STATUS } from '@/utils/financeiro/formatters';
-import { isTransfer, labelRota, labelOrigem, formatarPassageiros, formatarVoo, formatarRota } from '@/utils/financeiro/agendamento';
+import { isTransfer, labelRota, labelOrigem, formatarPassageiros, formatarVoo, formatarRota, motoristasDoTrecho, EU } from '@/utils/financeiro/agendamento';
 import { useMotoristas } from '@/hooks/useMotoristas';
 import { sincronizarAgendasMotoristas } from '@/integrations/firebase/motoristas';
 import { generateVoucherPDF } from '@/utils/generateVoucherPDF';
@@ -88,14 +88,18 @@ export default function Agenda() {
     sincronizarAgendasMotoristas(agendamentos).catch(e => console.error('Agenda dos motoristas:', e));
   }, [agendamentos, isLoading]);
 
-  const nomeMotorista = (id?: string) => motoristas.find(m => m.id === id)?.nome;
-  const motoristaDoItem = (item: CardItem) =>
-    item.leg === 'volta' ? item.agendamento.motorista_volta_id : item.agendamento.motorista_id;
+  const idsValidos = (ids: string[]) => {
+    const validos = ids.filter(id => id === EU || motoristas.some(m => m.id === id));
+    return validos.length ? validos : [EU];
+  };
+  const nomesEquipe = (ids: string[]) => {
+    const validos = idsValidos(ids);
+    if (validos.length === 1 && validos[0] === EU) return undefined;
+    return validos.map(id => id === EU ? 'Eu' : motoristas.find(m => m.id === id)!.nome).join(', ');
+  };
   const passaFiltro = (item: CardItem) => {
     if (filtroMotorista === 'todos') return true;
-    const id = motoristaDoItem(item);
-    const valido = !!id && motoristas.some(m => m.id === id);
-    return filtroMotorista === 'eu' ? !valido : id === filtroMotorista;
+    return idsValidos(motoristasDoTrecho(item.agendamento, item.leg === 'volta')).includes(filtroMotorista);
   };
 
   const futurosItems = buildItems(agendamentos, hoje, true).filter(passaFiltro);
@@ -158,8 +162,8 @@ export default function Agenda() {
         displayData={displayData}
         displayHora={displayHora}
         displayDestino={displayDestino}
-        motoristaNome={nomeMotorista(leg === 'volta' ? a.motorista_volta_id : a.motorista_id)}
-        nomeMotorista={nomeMotorista}
+        motoristaNome={nomesEquipe(motoristasDoTrecho(a, leg === 'volta'))}
+        nomesEquipe={nomesEquipe}
         expandido={expandidoKey === cardKey}
         confirmando={confirmandoId === a.id && leg !== 'volta'}
         onToggle={() => setExpandidoKey(expandidoKey === cardKey ? null : cardKey)}
@@ -189,7 +193,7 @@ export default function Agenda() {
 
         <div className="flex items-center gap-2">
           <div className="flex-1 flex gap-2 overflow-x-auto pb-1">
-            {[{ id: 'todos', nome: 'Todos' }, { id: 'eu', nome: 'Eu' }, ...motoristas.map(m => ({ id: m.id!, nome: m.nome }))].map(f => (
+            {[{ id: 'todos', nome: 'Todos' }, { id: EU, nome: 'Eu' }, ...motoristas.map(m => ({ id: m.id!, nome: m.nome }))].map(f => (
               <button key={f.id} onClick={() => setFiltroMotorista(f.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                   filtroMotorista === f.id ? 'bg-blue-700 text-white' : 'bg-white text-slate-500 border border-slate-200'
@@ -256,7 +260,7 @@ interface CardProps {
   displayHora: string;
   displayDestino: string | undefined;
   motoristaNome?: string;
-  nomeMotorista: (id?: string) => string | undefined;
+  nomesEquipe: (ids: string[]) => string | undefined;
   expandido: boolean;
   confirmando: boolean;
   onToggle: () => void;
@@ -273,7 +277,7 @@ interface CardProps {
 }
 
 function CardAgendamento({
-  agendamento: a, leg, displayData, displayHora, displayDestino, motoristaNome, nomeMotorista,
+  agendamento: a, leg, displayData, displayHora, displayDestino, motoristaNome, nomesEquipe,
   expandido, confirmando,
   onToggle, onEditar, onConcluir, onCancelar, onConfirmar,
   onExcluir, onConfirmarDelete, onCancelarDelete, onVoucher, onQuestionario, onPermitirEdicao,
@@ -362,11 +366,11 @@ function CardAgendamento({
             {a.hora_fim && <Row label="Término previsto" value={a.hora_fim} />}
             {a.ida_e_volta ? (
               <>
-                {nomeMotorista(a.motorista_id) && <Row label="Motorista da ida" value={nomeMotorista(a.motorista_id)!} />}
-                {nomeMotorista(a.motorista_volta_id) && <Row label="Motorista da volta" value={nomeMotorista(a.motorista_volta_id)!} />}
+                {nomesEquipe(motoristasDoTrecho(a)) && <Row label="Motoristas da ida" value={nomesEquipe(motoristasDoTrecho(a))!} />}
+                {nomesEquipe(motoristasDoTrecho(a, true)) && <Row label="Motoristas da volta" value={nomesEquipe(motoristasDoTrecho(a, true))!} />}
               </>
             ) : (
-              nomeMotorista(a.motorista_id) && <Row label="Motorista" value={nomeMotorista(a.motorista_id)!} />
+              nomesEquipe(motoristasDoTrecho(a)) && <Row label="Motoristas" value={nomesEquipe(motoristasDoTrecho(a))!} />
             )}
             {a.clienteTelefone && <Row label="Telefone" value={a.clienteTelefone} />}
             {(a.adultos || a.criancas) && <Row label="Passageiros" value={formatarPassageiros(a.adultos, a.criancas)} />}
