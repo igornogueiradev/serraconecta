@@ -23,6 +23,8 @@ import Relatorios from "./pages/financeiro/Relatorios";
 import Agenda from "./pages/financeiro/Agenda";
 import NovoAgendamento from "./pages/financeiro/NovoAgendamento";
 import EditarAgendamento from "./pages/financeiro/EditarAgendamento";
+import Motoristas from "./pages/financeiro/Motoristas";
+import MotoristaAgenda from "./pages/MotoristaAgenda";
 import { auth, db } from "@/integrations/firebase/client";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -101,7 +103,9 @@ const App = () => {
                   <Route path="/financeiro/agenda" element={user ? <Agenda /> : <Navigate to="/login" replace />} />
                   <Route path="/financeiro/novo-agendamento" element={user ? <NovoAgendamento /> : <Navigate to="/login" replace />} />
                   <Route path="/financeiro/editar-agendamento/:id" element={user ? <EditarAgendamento /> : <Navigate to="/login" replace />} />
+                  <Route path="/financeiro/motoristas" element={user ? <Motoristas /> : <Navigate to="/login" replace />} />
                   <Route path="/q/:id" element={<QuestionarioCliente />} />
+                  <Route path="/m/:token" element={<MotoristaAgenda />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </main>

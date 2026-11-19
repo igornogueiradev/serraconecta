@@ -124,12 +124,50 @@ export interface Agendamento {
   criancas?: number;
   voo_ida?: LeadVoo;
   voo_volta?: LeadVoo;
+  origem_volta?: string;
+  motorista_id?: string;
+  motorista_volta_id?: string;
   status: StatusAgendamento;
   observacao?: string;
   questionario_enviado?: boolean;
   questionario_respondido?: boolean;
   questionario_edicao_habilitada?: boolean;
   created_at?: string;
+}
+
+export interface Motorista {
+  id?: string;
+  user_id: string;
+  nome: string;
+  telefone?: string;
+  token: string;
+  created_at?: string;
+}
+
+export interface ServicoMotorista {
+  data: string;
+  hora: string;
+  hora_fim?: string;
+  tipo: string;
+  trecho?: 'IN' | 'OUT';
+  rota?: string;
+  embarque?: string;
+  hotel?: string;
+  cliente_nome?: string;
+  cliente_telefone?: string;
+  passageiros?: string;
+  voo?: string;
+  bagagens?: string;
+  equipamentos?: string;
+  observacao?: string;
+  observacao_cliente?: string;
+}
+
+export interface AgendaMotorista {
+  user_id: string;
+  motorista_nome: string;
+  atualizado_em: string;
+  servicos: ServicoMotorista[];
 }
 
 export interface QuestionarioResposta {

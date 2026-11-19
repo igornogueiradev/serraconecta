@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf';
 import type { Agendamento, UserProfile, QuestionarioResposta } from '@/integrations/firebase/types';
 import { LABEL_TIPO_AGENDAMENTO } from '@/utils/financeiro/formatters';
-import { isTransfer, labelRota, labelOrigem } from '@/utils/financeiro/agendamento';
+import { isTransfer, labelRota, labelOrigem, formatarRota } from '@/utils/financeiro/agendamento';
 
 const VERDE = [112, 136, 95] as const;
 const AZUL  = [19, 50, 74]  as const;
@@ -134,6 +134,7 @@ export async function generateVoucherPDF(
   profile: (UserProfile & { user_id?: string }) | null,
   resposta?: QuestionarioResposta | null,
 ): Promise<void> {
+  agendamento = { ...agendamento, destino: formatarRota(agendamento.destino), destino_volta: formatarRota(agendamento.destino_volta) };
   const H = calcDocHeight(agendamento, resposta);
   const doc = new jsPDF({ unit: 'mm', format: [W, H], orientation: 'portrait' });
   const code = `SC-${(agendamento.id ?? 'XXXXXXXX').slice(0, 8).toUpperCase()}`;

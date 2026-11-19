@@ -8,7 +8,7 @@ import {
 import { generateVoucherPDF } from '@/utils/generateVoucherPDF';
 import { LABEL_TIPO_AGENDAMENTO } from '@/utils/financeiro/formatters';
 import type { Agendamento, QuestionarioResposta } from '@/integrations/firebase/types';
-import { isTransfer, labelRota, labelOrigem } from '@/utils/financeiro/agendamento';
+import { isTransfer, labelRota, labelOrigem, formatarRota } from '@/utils/financeiro/agendamento';
 import { formatarCPF, validarCPF, mascararCPF } from '@/utils/cpf';
 import { FileDown, Lock, CheckCircle2 } from 'lucide-react';
 
@@ -31,7 +31,8 @@ function fmtMoeda(v: number) {
   return `R$ ${v.toFixed(2).replace('.', ',')}`;
 }
 
-function MiniVoucher({ agendamento }: { agendamento: Agendamento }) {
+function MiniVoucher({ agendamento: original }: { agendamento: Agendamento }) {
+  const agendamento = { ...original, destino: formatarRota(original.destino), destino_volta: formatarRota(original.destino_volta) };
   return (
     <div style={{ background: '#13324a' }} className="rounded-2xl px-5 py-4 mb-5 text-white">
       <div className="flex items-center gap-2 mb-3">

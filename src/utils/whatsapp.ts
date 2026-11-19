@@ -132,6 +132,13 @@ export function generateOwnerWhatsAppLink(
   return `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(message)}`;
 }
 
+export function linkWhatsApp(telefone: string | undefined, mensagem: string): string {
+  let digitos = (telefone ?? '').replace(/\D/g, '');
+  if (digitos.length === 10 || digitos.length === 11) digitos = `55${digitos}`;
+  const texto = encodeURIComponent(mensagem);
+  return digitos ? `https://wa.me/${digitos}?text=${texto}` : `https://api.whatsapp.com/send?text=${texto}`;
+}
+
 export function generateQuestionarioLink(agendamentoId: string): string {
   return `https://app.meuexecutivogramado.com.br/q/${agendamentoId}`;
 }

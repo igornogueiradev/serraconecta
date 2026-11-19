@@ -58,6 +58,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Motoristas parceiros: apenas o dono
+    match /motoristas/{docId} {
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+    }
+
+    // Agenda pública do motorista (sem valores): abre só quem tem o link; ninguém lista
+    match /agenda_motorista/{token} {
+      allow get: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.user_id;
+      allow update: if request.auth != null && request.auth.uid == resource.data.user_id
+        && request.auth.uid == request.resource.data.user_id;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.user_id;
+    }
+
     // Solicitações: visível apenas para owner e requester; criação apenas pelo solicitante
     match /requests/{docId} {
       allow read: if request.auth != null &&

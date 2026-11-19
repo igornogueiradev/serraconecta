@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PlusCircle, Pencil, Trash2, ChevronDown, CheckCircle2, XCircle, CalendarDays, FileDown, Send, ClipboardList, Unlock } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, ChevronDown, CheckCircle2, XCircle, CalendarDays, FileDown, Send, ClipboardList, Unlock, Users } from 'lucide-react';
 import { FinanceiroLayout } from './FinanceiroLayout';
 import { useAgendamentos } from '@/hooks/financeiro/useAgendamentos';
 import { useUserProfile } from '@/hooks/useUserProfile';
 import { atualizarAgendamento, deletarAgendamento } from '@/integrations/firebase/financeiro';
 import { getRespostaPorAgendamento } from '@/integrations/firebase/questionario';
 import { formatarMoeda, formatarData, LABEL_TIPO_AGENDAMENTO, LABEL_STATUS, COR_STATUS } from '@/utils/financeiro/formatters';
-import { isTransfer, labelRota, labelOrigem, formatarPassageiros, formatarVoo } from '@/utils/financeiro/agendamento';
+import { isTransfer, labelRota, labelOrigem, formatarPassageiros, formatarVoo, formatarRota } from '@/utils/financeiro/agendamento';
+import { useMotoristas } from '@/hooks/useMotoristas';
+import { sincronizarAgendasMotoristas } from '@/integrations/firebase/motoristas';
 import { generateVoucherPDF } from '@/utils/generateVoucherPDF';
 import { generateQuestionarioWhatsApp } from '@/utils/whatsapp';
 import { format, isToday, isTomorrow, startOfDay } from 'date-fns';
@@ -47,7 +49,7 @@ function buildItems(agendamentos: Agendamento[], hoje: Date, onlyFuture: boolean
         cardKey: a.ida_e_volta ? `${a.id}-ida` : a.id!,
         displayData: a.data,
         displayHora: a.hora,
-        displayDestino: a.destino,
+        displayDestino: formatarRota(a.destino),
       });
     }
 
@@ -61,7 +63,7 @@ function buildItems(agendamentos: Agendamento[], hoje: Date, onlyFuture: boolean
           cardKey: `${a.id}-volta`,
           displayData: a.data_volta,
           displayHora: a.hora_volta ?? '',
-          displayDestino: a.destino_volta,
+          displayDestino: formatarRota(a.destino_volta),
         });
       }
     }
@@ -71,7 +73,9 @@ function buildItems(agendamentos: Agendamento[], hoje: Date, onlyFuture: boolean
 
 export default function Agenda() {
   const navigate = useNavigate();
-  const { agendamentos, refetch } = useAgendamentos();
+  const { agendamentos, isLoading, refetch } = useAgendamentos();
+  const { motoristas } = useMotoristas();
+  const [filtroMotorista, setFiltroMotorista] = useState<string>('todos');
   const { profile } = useUserProfile();
   const [expandidoKey, setExpandidoKey] = useState<string | null>(null);
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null);
@@ -79,8 +83,23 @@ export default function Agenda() {
 
   const hoje = startOfDay(new Date());
 
-  const futurosItems = buildItems(agendamentos, hoje, true);
-  const passadosItems = buildItems(agendamentos, hoje, false);
+  useEffect(() => {
+    if (isLoading) return;
+    sincronizarAgendasMotoristas(agendamentos).catch(e => console.error('Agenda dos motoristas:', e));
+  }, [agendamentos, isLoading]);
+
+  const nomeMotorista = (id?: string) => motoristas.find(m => m.id === id)?.nome;
+  const motoristaDoItem = (item: CardItem) =>
+    item.leg === 'volta' ? item.agendamento.motorista_volta_id : item.agendamento.motorista_id;
+  const passaFiltro = (item: CardItem) => {
+    if (filtroMotorista === 'todos') return true;
+    const id = motoristaDoItem(item);
+    const valido = !!id && motoristas.some(m => m.id === id);
+    return filtroMotorista === 'eu' ? !valido : id === filtroMotorista;
+  };
+
+  const futurosItems = buildItems(agendamentos, hoje, true).filter(passaFiltro);
+  const passadosItems = buildItems(agendamentos, hoje, false).filter(passaFiltro);
 
   const grupos: Record<string, CardItem[]> = {};
   for (const item of futurosItems) {
@@ -139,6 +158,8 @@ export default function Agenda() {
         displayData={displayData}
         displayHora={displayHora}
         displayDestino={displayDestino}
+        motoristaNome={nomeMotorista(leg === 'volta' ? a.motorista_volta_id : a.motorista_id)}
+        nomeMotorista={nomeMotorista}
         expandido={expandidoKey === cardKey}
         confirmando={confirmandoId === a.id && leg !== 'volta'}
         onToggle={() => setExpandidoKey(expandidoKey === cardKey ? null : cardKey)}
@@ -165,6 +186,23 @@ export default function Agenda() {
           <PlusCircle size={20} />
           Novo Compromisso
         </button>
+
+        <div className="flex items-center gap-2">
+          <div className="flex-1 flex gap-2 overflow-x-auto pb-1">
+            {[{ id: 'todos', nome: 'Todos' }, { id: 'eu', nome: 'Eu' }, ...motoristas.map(m => ({ id: m.id!, nome: m.nome }))].map(f => (
+              <button key={f.id} onClick={() => setFiltroMotorista(f.id)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                  filtroMotorista === f.id ? 'bg-blue-700 text-white' : 'bg-white text-slate-500 border border-slate-200'
+                }`}>
+                {f.nome}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => navigate('/financeiro/motoristas')}
+            className="flex items-center gap-1 text-xs text-blue-700 font-medium whitespace-nowrap px-2 py-1.5">
+            <Users size={14} /> Motoristas
+          </button>
+        </div>
 
         {Object.keys(grupos).length === 0 && (
           <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
@@ -217,6 +255,8 @@ interface CardProps {
   displayData: string;
   displayHora: string;
   displayDestino: string | undefined;
+  motoristaNome?: string;
+  nomeMotorista: (id?: string) => string | undefined;
   expandido: boolean;
   confirmando: boolean;
   onToggle: () => void;
@@ -233,7 +273,7 @@ interface CardProps {
 }
 
 function CardAgendamento({
-  agendamento: a, leg, displayData, displayHora, displayDestino,
+  agendamento: a, leg, displayData, displayHora, displayDestino, motoristaNome, nomeMotorista,
   expandido, confirmando,
   onToggle, onEditar, onConcluir, onCancelar, onConfirmar,
   onExcluir, onConfirmarDelete, onCancelarDelete, onVoucher, onQuestionario, onPermitirEdicao,
@@ -272,6 +312,7 @@ function CardAgendamento({
             {displayDestino ?? ''}
             {!a.clienteNome && !displayDestino ? 'Sem detalhes' : ''}
           </p>
+          {motoristaNome && <p className="text-xs text-indigo-600 font-medium truncate">🚗 {motoristaNome}</p>}
         </div>
         <div className="flex flex-col items-end gap-1 flex-shrink-0">
           {legBadge}
@@ -299,12 +340,12 @@ function CardAgendamento({
               <>
                 <div className="flex justify-between gap-2">
                   <span className="text-slate-400">🛬 IN</span>
-                  <span className="text-right">{a.hora} · {formatarData(a.data)}{a.destino ? ` · ${a.destino}` : ''}</span>
+                  <span className="text-right">{a.hora} · {formatarData(a.data)}{a.destino ? ` · ${formatarRota(a.destino)}` : ''}</span>
                 </div>
                 {a.data_volta && (
                   <div className="flex justify-between gap-2">
                     <span className="text-slate-400">🛫 OUT</span>
-                    <span className="text-right">{a.hora_volta} · {formatarData(a.data_volta)}{a.destino_volta ? ` · ${a.destino_volta}` : ''}</span>
+                    <span className="text-right">{a.hora_volta} · {formatarData(a.data_volta)}{a.destino_volta ? ` · ${formatarRota(a.destino_volta)}` : ''}</span>
                   </div>
                 )}
               </>
@@ -319,6 +360,14 @@ function CardAgendamento({
 
             {a.origem && !isTransfer(a.tipo) && <Row label={labelOrigem(a.tipo)} value={a.origem} />}
             {a.hora_fim && <Row label="Término previsto" value={a.hora_fim} />}
+            {a.ida_e_volta ? (
+              <>
+                {nomeMotorista(a.motorista_id) && <Row label="Motorista da ida" value={nomeMotorista(a.motorista_id)!} />}
+                {nomeMotorista(a.motorista_volta_id) && <Row label="Motorista da volta" value={nomeMotorista(a.motorista_volta_id)!} />}
+              </>
+            ) : (
+              nomeMotorista(a.motorista_id) && <Row label="Motorista" value={nomeMotorista(a.motorista_id)!} />
+            )}
             {a.clienteTelefone && <Row label="Telefone" value={a.clienteTelefone} />}
             {(a.adultos || a.criancas) && <Row label="Passageiros" value={formatarPassageiros(a.adultos, a.criancas)} />}
             {a.voo_ida && <Row label={a.ida_e_volta ? 'Voo de ida' : 'Voo'} value={formatarVoo(a.voo_ida)} />}

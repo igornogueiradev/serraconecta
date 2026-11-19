@@ -29,7 +29,12 @@ export function montarRota(origem?: string, destino?: string) {
   return [origem, destino].map(s => s?.trim()).filter(Boolean).join(' → ');
 }
 
+export function formatarRota(rota?: string) {
+  return rota?.replace(/\s*(?:->|>)\s*/g, ' → ');
+}
+
 export function separarRota(rota?: string, origem?: string): [string, string] {
+  rota = formatarRota(rota);
   if (!rota) return [origem ?? '', ''];
   if (origem && rota === origem) return [origem, ''];
   if (origem && rota.startsWith(`${origem} → `)) return [origem, rota.slice(origem.length + 3)];
