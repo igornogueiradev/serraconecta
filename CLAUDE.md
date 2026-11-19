@@ -67,6 +67,13 @@ Webapp pessoal exclusivo de Igor (igor_flavio12@hotmail.com) para gestão de age
 - Questionário: CPF obrigatório (`src/utils/cpf.ts`); vem pré-preenchido com os dados do agendamento
 - `questionario_respostas`: ID do documento = ID do agendamento; regras permitem `get` público e `list` só do dono (idem `agendamentos`)
 
+### Motoristas parceiros (nov/2026)
+- `motoristas/{id}` (nome, telefone, token) — cadastro em `src/pages/financeiro/Motoristas.tsx`
+- Agendamento: `motorista_id` (ida ou trecho único) e `motorista_volta_id`; vazio = o próprio Igor
+- Agenda: filtro Todos / Eu / cada motorista, por trecho
+- `agenda_motorista/{token}`: cópia sem valores dos serviços de hoje em diante, refeita por `sincronizarAgendasMotoristas()` sempre que a Agenda carrega; página pública `/m/:token` (`src/pages/MotoristaAgenda.tsx`)
+- Volta com `origem_volta` + `destino_volta` (rota montada); `formatarRota()` troca ">" antigos por "→"
+
 ### Módulo Financeiro
 - Páginas: Dashboard, NovaReceita, EditarReceita, NovoGasto, EditarGasto, Historico, Relatorios, Agenda, NovoAgendamento, EditarAgendamento
 - `src/hooks/financeiro/` — hooks de receitas, gastos e agendamentos
